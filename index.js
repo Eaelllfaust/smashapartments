@@ -6,7 +6,13 @@ const app = express();
 const cookieParser = require("cookie-parser");
 const path = require('path');
 
-console.log(__dirname);
+// CORS configuration
+const corsOptions = {
+  origin: "https://smashapartments.onrender.com", // Replace with your frontend URL
+  methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+  allowedHeaders: "Content-Type, Authorization",
+};
+app.use(cors(corsOptions));
 
 // Database connection
 mongoose.connect(process.env.MONGO_URL)
@@ -30,5 +36,5 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '/client/dist/index.html'));
 });
 
-const port = 8000;
+const port = process.env.PORT || 8000;
 app.listen(port, () => console.log(`Server is running on port ${port}`));
