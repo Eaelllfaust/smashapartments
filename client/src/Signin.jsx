@@ -15,7 +15,7 @@ export default function Signin() {
     e.preventDefault(); // Prevent default form submission
 
     try {
-      const response = await axios.post('/login', { email, password }, { withCredentials: true });
+      const response = await axios.post('https://smashapartments.onrender.com/login', { email, password }, { withCredentials: true });
 
       if (response.data.error) {
         toast.error(response.data.error);
