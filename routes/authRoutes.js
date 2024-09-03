@@ -60,12 +60,13 @@ const {
 } = require("../controllers/authController");
 
 //middleware
-router.use(
-  cors({
-    credentials: true,
-    origin: "http://localhost:5173",
-  })
-);
+const corsOptions = {
+  origin: 'https://smashapartments.onrender.com',
+  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+  allowedHeaders: 'Content-Type, Authorization',
+};
+
+router.use(cors(corsOptions));
 
 router.get("/", test);
 router.post("/register", registerUser);
