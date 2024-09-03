@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import apiClient from './apiClient';
 
 export default function Cooffice() {
   const location = useLocation();

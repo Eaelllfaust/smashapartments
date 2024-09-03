@@ -4,6 +4,7 @@ import axios from 'axios';
 import { UserContext } from '../context/userContext'; // Adjust the path as necessary
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import apiClient from './apiClient';
 
 export default function Signin() {
   const [email, setEmail] = useState('');
@@ -15,7 +16,7 @@ export default function Signin() {
     e.preventDefault(); // Prevent default form submission
 
     try {
-      const response = await axios.post('https://smashapartments.onrender.com/login', { email, password }, { withCredentials: true });
+      const response = await apiClient.post('/login', { email, password }, { withCredentials: true });
 
       if (response.data.error) {
         toast.error(response.data.error);
