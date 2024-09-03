@@ -114,7 +114,7 @@ export default function AirportPickupDetails() {
                 {pickup.images && pickup.images.length > 0 ? (
                   <>
                     <img
-                      src={`http://localhost:8000/uploads/${pickup.images[currentImageIndex].media_name}`}
+                      src={`https://smashapartments.onrender.com/uploads/${pickup.images[currentImageIndex].media_name}`}
                       alt={`Pickup Service ${currentImageIndex + 1}`}
                     />
                   </>

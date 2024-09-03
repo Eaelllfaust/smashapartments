@@ -91,7 +91,7 @@ export default function CoofficeDetails() {
               <div className="list_1">
                 <img
                   src={cooffice.images?.[0]?.url ? 
-                       `http://localhost:8000/${cooffice.images[0].url}` : 
+                       `https://smashapartments.onrender.com/${cooffice.images[0].url}` : 
                        '/assets/bg (1).png'}
                   alt={cooffice.property_name || 'Cooffice Image'}
                 />

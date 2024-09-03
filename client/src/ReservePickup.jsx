@@ -150,7 +150,7 @@ export default function ReservePickup() {
                   {serviceDetails.images &&
                     serviceDetails.images.length > 0 && (
                       <img
-                        src={`http://localhost:8000/uploads/${serviceDetails.images[0].media_name}`}
+                        src={`https://smashapartments.onrender.com/uploads/${serviceDetails.images[0].media_name}`}
                         alt="Service"
                       />
                     )}

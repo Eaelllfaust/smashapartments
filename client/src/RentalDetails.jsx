@@ -91,7 +91,7 @@ export default function RentalDetails() {
               <div className="list_1">
                 <img
                   src={rental.images?.[0]?.url ? 
-                       `http://localhost:8000/${rental.images[0].url}` : 
+                       `https://smashapartments.onrender.com/${rental.images[0].url}` : 
                        '/assets/bg (3).png'}
                   alt={rental.carNameModel || 'Car Rental Image'}
                 />
