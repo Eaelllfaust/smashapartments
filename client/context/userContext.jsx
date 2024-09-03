@@ -1,5 +1,6 @@
 import axios from "axios";
 import { createContext, useEffect, useState } from "react";
+import apiClient from "../src/apiClient";
 
 export const UserContext = createContext({});
 
@@ -10,7 +11,7 @@ export function UserContextProvider({ children }) {
   useEffect(() => {
     const fetchUserProfile = async () => {
       try {
-        const { data } = await axios.get("/profile"); // Replace with the correct endpoint
+        const { data } = await apiClient.get("/profile"); // Replace with the correct endpoint
         setUser(data);
       } catch (err) {
         console.error(err);

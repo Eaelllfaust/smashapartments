@@ -98,7 +98,7 @@ import Preferences from "./user/Preferences";
 
 
 // Axios Configuration
-axios.defaults.baseURL = "http://localhost:8000/";
+axios.defaults.baseURL = "https://smashapartments.onrender.com/";
 axios.defaults.withCredentials = true;
 
 
