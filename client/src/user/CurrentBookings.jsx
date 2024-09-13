@@ -147,7 +147,7 @@ export default function CurrentBookings() {
                     </div>
                     <div className="info_second">
                       <div>
-                        <img src={booking.media.length > 0 ? `https://smashapartments.onrender.com/uploads/${booking.media[0].media_name}`: '/assets/properties (1).png'} alt="" />
+                        <img src={booking.media.length > 0 ? `https://smashapartments-kyto.onrender.com/uploads/${booking.media[0].media_name}`: '/assets/properties (1).png'} alt="" />
                       </div>
                     </div>
                   </div>

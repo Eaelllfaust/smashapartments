@@ -61,7 +61,7 @@ const {
 
 //middleware
 const corsOptions = {
-  origin: 'https://smashapartments.onrender.com',
+  origin: 'https://smashapartments-kyto.onrender.com',
   methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
   allowedHeaders: 'Content-Type, Authorization',
 };

@@ -287,7 +287,7 @@ export default function Rentals() {
             {rentals.map((rental) => (
               <div className="list_node" key={rental._id}>
                 <div className="list_1">
-                  <img src={`https://smashapartments.onrender.com/uploads/${rental.images[0].media_name}` || "assets/bg (3).png"} alt={rental.carNameModel} />
+                  <img src={`https://smashapartments-kyto.onrender.com/uploads/${rental.images[0].media_name}` || "assets/bg (3).png"} alt={rental.carNameModel} />
                 </div>
                 <div className="list_2">
                   <div className="l22">

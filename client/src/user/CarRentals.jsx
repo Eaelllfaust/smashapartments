@@ -141,7 +141,7 @@ export default function CarRentals() {
                 </div>
                 <div className="info_second">
                   <div>
-                    <img src={rental.media.length > 0 ? `https://smashapartments.onrender.com/uploads/${rental.media[0].media_name}`: '/assets/properties (1).png'} alt="" />
+                    <img src={rental.media.length > 0 ? `https://smashapartments-kyto.onrender.com/uploads/${rental.media[0].media_name}`: '/assets/properties (1).png'} alt="" />
                   </div>
                 </div>
               </div>

@@ -362,7 +362,7 @@ export default function Stays() {
               <div className="list_node" key={listing._id}>
                 <div className="list_1">
                   <img
-                    src={`https://smashapartments.onrender.com/uploads/${listing.images[0]?.media_name}`}
+                    src={`https://smashapartments-kyto.onrender.com/uploads/${listing.images[0]?.media_name}`}
                     alt={listing.property_name}
                   />
                 </div>
