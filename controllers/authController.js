@@ -2583,6 +2583,7 @@ const updatePayment = async (req, res) => {
             card_exp_year: req.body.card_exp_year || "",
             cvv: req.body.cvv || "",
           });
+          
         } else {
           // Update payment method if it exists
           paymentMethod.name_on_card =
