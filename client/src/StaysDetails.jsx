@@ -92,11 +92,13 @@ export default function StaysDetails() {
             <div className="list_node">
               <div className="list_1">
                 <img
-                  src={listing.images?.[0]?.url ? 
-                       `https://smashapartments-kyto.onrender.com/uploads/${listing.images[0].url}` : 
-                       '/assets/properties (2).png'}
-                  alt={listing.property_name || 'Property Image'}
-                />
+                    src={
+                      listing.images?.[0]?.url
+                        ? `https://smashapartments-kyto.onrender.com/uploads/${listing.images[0].url}`
+                        : "/assets/properties (2).png"
+                    }
+                    alt={listing.property_name || "Property Image"}
+                  />
               </div>
               <div className="list_2">
                 <div className="l22">
