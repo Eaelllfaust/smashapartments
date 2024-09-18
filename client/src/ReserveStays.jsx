@@ -188,7 +188,7 @@ export default function ReserveStays() {
                   <img
                     src={
                       stayDetails.images?.[0]?.url
-                        ? `https://smashapartments-kyto.onrender.com/uploads/${stayDetails.images[0].url}`
+                        ? `https://smashapartments-kyto.onrender.com/uploads/${stayDetails.images[0].media_name}`
                         : "/assets/properties (2).png"
                     }
                     alt={stayDetails.property_name || "Property Image"}
