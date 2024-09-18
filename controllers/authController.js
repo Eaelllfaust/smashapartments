@@ -1963,12 +1963,13 @@ const getListings = async (req, res) => {
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, "uploads/");
+    cb(null, "/uploads"); // Use the absolute path where the disk is mounted
   },
   filename: function (req, file, cb) {
     cb(null, Date.now() + path.extname(file.originalname));
   },
 });
+
 const upload = multer({ storage: storage });
 
 const createRental = async (req, res) => {
