@@ -10,7 +10,7 @@ import Footer from "./components/Footer";
 import Home from "./Home";
 import ListProperty from "./ListProperty";
 import CreateAccount from "./CreateAccount";
-import Signin from "./signin";
+import Signin from "./Signin";
 import PartnerDetails from "./PartnerDetails";
 import PartnerPassword from "./PartnerPassword";
 import Stays from "./Stays";
