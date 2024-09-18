@@ -563,7 +563,7 @@ export default function Home() {
                     <div>
                       <div className="o33">
                         <div>
-                          {listing.weekly_discount || "No discount"}% discounted
+                          {listing.weekly_discount || "0"}% discounted
                         </div>
                         <div>Daily rate</div>
                       </div>
