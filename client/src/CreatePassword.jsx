@@ -31,8 +31,8 @@ export default function CreatePassword() {
         } else {
           setPassword(""); // Reset the password field
           setConfirmPassword(""); // Reset the confirm password field
-          toast.success("Account created successfully!");
-          navigate("/user"); // Navigate only after successful account creation
+          toast.success("Check email for verification code");
+          navigate("/authme"); // Navigate only after successful account creation
         }
       }
     } catch (error) {

@@ -1,18 +1,34 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 import { Link } from "react-router-dom";
+import { toast } from 'react-toastify'; // Import React Toastify
 
 export default function Stays() {
   const locationSearch = useLocation(); // Get the current location object to access query params
   const navigate = useNavigate();
+  const [propertyType, setPropertyType] = useState("");
   const [listings, setListings] = useState([]);
   const [initialListings, setInitialListings] = useState([]); // Store initial listings
   const [filters, setFilters] = useState({}); // Initialize filters as an empty object
   const [hasMore, setHasMore] = useState(true); // Flag to indicate if there are more listings
   const [loading, setLoading] = useState(false); // Flag to indicate if the component is loading more listings
   const [offset, setOffset] = useState(0); // Offset for pagination
+  const [query, setQuery] = useState('');
+  const [suggestions, setSuggestions] = useState([]);
+  const [dateRange, setDateRange] = useState([null, null]);
+  const [adults, setAdults] = useState(0);
+  const [children, setChildren] = useState(0);
+  const [rooms, setRooms] = useState(0);
+  const [showPopover1, setShowPopover1] = useState(false);
+  const [showPopover2, setShowPopover2] = useState(false);
+  const [startDate, endDate] = dateRange;
 
+  const popoverRef1 = useRef(null);
+  const popoverRef2 = useRef(null);
+  const [userLocation, setUserLocation] = useState(null);
   // State for sa_search_1 form inputs
   const [searchLocation, setSearchLocation] = useState("");
   const [searchDate, setSearchDate] = useState("");
@@ -24,33 +40,83 @@ export default function Stays() {
   const locationParam = params.get("location");
   const date = params.get("date");
   const people = params.get("people");
-  const rooms = params.get("rooms");
+  const rooms_get = params.get("rooms");
 
   const latitude = params.get("latitude");
   const longitude = params.get("longitude");
+  const handleInputChange = async (e) => {
+    const value = e.target.value;
+    setQuery(value);
+
+    if (value.length > 2) {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${value}&addressdetails=1&limit=5`
+      );
+      const results = await response.json();
+      setSuggestions(results);
+    } else {
+      setSuggestions([]);
+    }
+  };
+  const handleSuggestionClick = (suggestion) => {
+    setQuery(suggestion.display_name);
+    setSuggestions([]);
+  };
+
+  const handleIncrease = (setter, value) => {
+    setter(value + 1);
+  };
+
+  const handleDecrease = (setter, value) => {
+    if (value > 0) {
+      setter(value - 1);
+    }
+  };
 
   useEffect(() => {
-    const fetchListings = async () => {
-      try {
-        const response = await axios.get("/getlistings", {
-          params: {
-            limit: 5,
-            offset: 0,
-            location: locationParam,
-            date,
-            people,
-            rooms,
-          },
-        });
-        setListings(response.data);
-        setHasMore(response.data.length === 5);
-      } catch (error) {
-        console.error("Error fetching listings:", error);
-      }
-    };
+    const params = new URLSearchParams(location.search);
+    setQuery(params.get("location") || "");
+    setDateRange([
+      params.get("checkIn") ? new Date(params.get("checkIn")) : null,
+      params.get("checkOut") ? new Date(params.get("checkOut")) : null
+    ]);
+    const totalPeople = Number(params.get("people") || 0);
+    setAdults(Math.floor(totalPeople / 2));
+    setChildren(totalPeople % 2);
+    setRooms(Number(params.get("rooms") || 0));
+    setPropertyType(params.get("propertyType") || "");
 
     fetchListings();
-  }, [locationParam, date, people, rooms]);
+  }, [location.search]);
+  const handleInputClick1 = () => {
+    setShowPopover1(true);
+    setShowPopover2(false);
+  };
+
+  const handleInputClick2 = () => {
+    setShowPopover2(true);
+    setShowPopover1(false);
+  };
+  useEffect(() => {
+  
+    const handleClickOutside = (event) => {
+  
+      if (popoverRef1.current && !popoverRef1.current.contains(event.target)) {
+        setShowPopover1(false);
+      }
+      if (popoverRef2.current && !popoverRef2.current.contains(event.target)) {
+        setShowPopover2(false);
+      }
+     
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [ popoverRef1, popoverRef2]);
+
 
   useEffect(() => {
     if (Object.keys(filters).length > 0) {
@@ -75,6 +141,23 @@ export default function Stays() {
     }
   }, [filters]);
 
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          setUserLocation({ latitude, longitude });
+        },
+        (error) => {
+          console.error("Error getting location:", error);
+        }
+      );
+    } else {
+      console.error("Geolocation is not supported by this browser.");
+    }
+
+   
+  }, []);
   const handleFilterChange = (e) => {
     const { name, type, value, checked } = e.target;
     setFilters((prevFilters) => ({
@@ -88,6 +171,57 @@ export default function Stays() {
       ...prevFilters,
       [e.target.name]: Number(e.target.value),
     }));
+  };
+
+
+  
+
+ 
+
+  const handleSearch = () => {
+    toast("Searching...")
+    const queryParams = new URLSearchParams();
+    if (query) queryParams.append("location", query);
+    if (startDate) queryParams.append("checkIn", startDate.toISOString());
+    if (endDate) queryParams.append("checkOut", endDate.toISOString());
+    if (adults > 0 || children > 0) queryParams.append("people", adults + children);
+    if (rooms > 0) queryParams.append("rooms", rooms);
+    if (propertyType) queryParams.append("propertyType", propertyType);
+
+    navigate(`/stays?${queryParams.toString()}`);
+  };
+
+
+  const fetchListings = async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams(location.search);
+      params.append("limit", "5");
+      params.append("offset", "0");
+
+      const response = await axios.get("/getlistings", { params });
+      setListings(response.data);
+      setHasMore(response.data.length === 5);
+      toast.success("Fetched properties");
+    } catch (error) {
+      console.error("Error fetching listings:", error);
+      toast.error("Failed to fetch properties");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+
+
+ 
+  const handleLocationBasedLink = (path) => {
+    const queryParams = new URLSearchParams();
+    if (userLocation) {
+      queryParams.append("latitude", userLocation.latitude);
+      queryParams.append("longitude", userLocation.longitude);
+    }
+    navigate(`${path}?${queryParams.toString()}`);
   };
 
   const handleSearchSubmit = () => {
@@ -104,29 +238,24 @@ export default function Stays() {
     if (!hasMore || loading) return;
     setLoading(true);
     try {
-      const response = await axios.get("/getlistings", {
-        params: {
-          limit: 5,
-          offset: listings.length,
-          location: locationParam,
-          date,
-          people,
-          rooms,
-        },
-      });
-      setListings([...listings, ...response.data]);
+      const params = new URLSearchParams(location.search);
+      params.append("limit", "5");
+      params.append("offset", listings.length.toString());
+
+      const response = await axios.get("/getlistings", { params });
+      setListings(prevListings => [...prevListings, ...response.data]);
       setHasMore(response.data.length === 5);
+      toast.success("Fetched more properties");
     } catch (error) {
-      console.error("Error loading more listings:", error);
+      console.error("Error fetching more listings:", error);
+      toast.error("Failed to fetch more properties");
     } finally {
       setLoading(false);
     }
   };
-
-  const [isMockHidden, setIsMockHidden] = useState(false);
-
-  const handleMockClick = () => {
-    setIsMockHidden(true);
+  const getMatchPercentage = (matchScore) => {
+    const totalCriteria = Object.keys(new URLSearchParams(location.search)).length;
+    return Math.round((matchScore / totalCriteria) * 100);
   };
   return (
     <>
@@ -309,57 +438,103 @@ export default function Stays() {
           </div>
         </div>
         <div className="col_2">
-        <div className={`sa_search_1 i98 mock ${isMockHidden ? 'hide' : ''}`} onClick={handleMockClick}>
-        <div className="search_item doom">
-          <input
-            type="text"
-            placeholder="Search for your next getaway"
-          />
-        </div>
-        <div className="button b2 b3">
-          Search
-        </div>
-      </div>
+        <div className="sa_search_max max_max">
+          <div className="search_item_max">
+            <img src="/assets/bed-regular-84.png" alt="" />
+            <input
+              type="text"
+              placeholder="Where are you going?"
+              value={query}
+              onChange={handleInputChange}
+              className="location-input"
+            />
+            {suggestions.length > 0 && (
+              <div className="popover">
+                {suggestions.map((suggestion) => (
+                  <div
+                    key={suggestion.place_id}
+                    className="popover-item"
+                    onClick={() => handleSuggestionClick(suggestion)}
+                  >
+                    {suggestion.display_name}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
-      {/* Detailed Search Container */}
-      <div className={`sa_search_1 i98 k99 p00 ${isMockHidden ? '' : 'hide'}`}>
-        <div className="search_item">
-          <input 
-            type="text" 
-            placeholder="Location" 
-            value={searchLocation}
-            onChange={(e) => setSearchLocation(e.target.value)}
-          />
+          <div className="search_item_max">
+            <img src="/assets/calendar-week-regular-84.png" alt="" />
+            <DatePicker
+              selectsRange={true}
+              startDate={startDate}
+              endDate={endDate}
+              placeholderText="Check in - Check out"
+              onChange={(update) => {
+                setDateRange(update);
+              }}
+              withPortal
+            />
+          </div>
+          <div className="search_item_max" ref={popoverRef1}>
+            <img src="/assets/user-regular-84.png" alt="" />
+            <input
+              type="text"
+              placeholder={`Adults: ${adults} | Children: ${children} | Rooms: ${rooms}`}
+              readOnly
+              onClick={handleInputClick1}
+            />
+
+            {showPopover1 && (
+              <div className="popover">
+                <div className="popover-item new_pop">
+                  Adults
+                  <div className="value_decision">
+                    <i className="bx bx-minus" onClick={() => handleDecrease(setAdults, adults)}></i>
+                    <input type="number" value={adults} readOnly />
+                    <i className="bx bx-plus" onClick={() => handleIncrease(setAdults, adults)}></i>
+                  </div>
+                </div>
+                <div className="popover-item new_pop">
+                  Children
+                  <div className="value_decision">
+                    <i className="bx bx-minus" onClick={() => handleDecrease(setChildren, children)}></i>
+                    <input type="number" value={children} readOnly />
+                    <i className="bx bx-plus" onClick={() => handleIncrease(setChildren, children)}></i>
+                  </div>
+                </div>
+                <div className="popover-item new_pop">
+                  Rooms
+                  <div className="value_decision">
+                    <i className="bx bx-minus" onClick={() => handleDecrease(setRooms, rooms)}></i>
+                    <input type="number" value={rooms} readOnly />
+                    <i className="bx bx-plus" onClick={() => handleIncrease(setRooms, rooms)}></i>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+          <select
+          className="select"
+          value={propertyType}
+          onChange={(e) => setPropertyType(e.target.value)}
+        >
+          <option value="">Select property type</option>
+          <option value="airbnb">Airbnb</option>
+          <option value="hotel">Hotel</option>
+          <option value="shortTermRental">Short term rental</option>
+          <option value="villa">Villa</option>
+          <option value="apartments">Apartments</option>
+        </select>
+          <div className="button b2" onClick={handleSearch}>Search</div>
         </div>
-        <div className="search_item">
-          <input 
-            type="date" 
-            placeholder="Date" 
-            value={searchDate}
-            onChange={(e) => setSearchDate(e.target.value)}
-          />
-        </div>
-        <div className="search_item">
-          <input 
-            type="number" 
-            placeholder="People" 
-            value={searchPeople}
-            onChange={(e) => setSearchPeople(e.target.value)}
-          />
-        </div>
-        <div className="search_item">
-          <input 
-            type="number" 
-            placeholder="Rooms" 
-            value={searchRooms}
-            onChange={(e) => setSearchRooms(e.target.value)}
-          />
-        </div>
-        <div className="button b2 b3" onClick={handleSearchSubmit}>Search</div>
-      </div>
+
+          {/* Detailed Search Container */}
+     
           <div className="listings_list">
             {listings.map((listing) => (
               <div className="list_node" key={listing._id}>
+                
                 <div className="list_1">
                   <img
                     src={`https://smashapartments-kyto.onrender.com/uploads/${listing.images[0]?.media_name}`}

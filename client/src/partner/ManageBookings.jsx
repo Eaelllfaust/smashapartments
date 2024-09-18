@@ -18,7 +18,7 @@ export default function ManageBookings() {
     if (loading) return;
     if (!user) {
       navigate("/signin");
-    } else if (user.account_type !== "partner") {
+    } else if (user.interface !== "partner") {
       navigate("/");
     } else {
       const fetchUpcomingBookings = async () => {

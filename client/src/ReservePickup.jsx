@@ -60,8 +60,8 @@ export default function ReservePickup() {
       return;
     }
 
-    if (user.account_type !== "user") {
-      toast.error("Please create a booking account to continue.");
+    if (user.interface !== "user") {
+      toast.error("Please signin as a customer to continue.");
       return;
     }
 

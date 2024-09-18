@@ -16,7 +16,7 @@ export default function CurrentBookings() {
     if (loading) return;
     if (!user) {
       navigate("/signin");
-    } else if (user.account_type !== 'user') {
+    } else if (user.interface !== 'user') {
       navigate("/");
     } else {
       fetchBookings();

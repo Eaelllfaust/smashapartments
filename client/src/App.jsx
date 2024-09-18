@@ -1,19 +1,16 @@
-// React and Router Imports
 import { useState } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { UserContextProvider } from "../context/userContext";
-// Global Styles
+
 import "./style.css";
 
-// Common Components
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 
-// General Pages
 import Home from "./Home";
 import ListProperty from "./ListProperty";
 import CreateAccount from "./CreateAccount";
-import Signin from "./Signin";
+import Signin from "./signin";
 import PartnerDetails from "./PartnerDetails";
 import PartnerPassword from "./PartnerPassword";
 import Stays from "./Stays";
@@ -21,7 +18,6 @@ import CreatePassword from "./CreatePassword";
 import { ToastContainer } from "react-toastify";
 import axios from "axios";
 
-// User Pages
 import HomeUser from "./user/HomeUser";
 import ManageBookings from "./user/ManageBookings";
 import ManageDetails from "./user/ManageDetails";
@@ -35,7 +31,6 @@ import PastAirportPickups from "./user/PastAirportPickups";
 import OfficeSpaces from "./user/OfficeSpaces";
 import PastOfficeSpaces from "./user/PastOfficeSpaces";
 
-// Partner Pages
 import HomaPartner from "./partner/HomaPartner";
 import ManageBookingsPartner from "./partner/ManageBookings";
 import ManageListings from "./partner/ManageListings";
@@ -54,7 +49,6 @@ import AddAirportPickup from "./partner/AddAirportPickup";
 import AddCarRentals from "./partner/AddCarRentals";
 import AllPastBookings from "./partner/AllPastBookings";
 
-// Administrator Pages
 import HomeAdmin from "./administrator/HomeAdmin";
 import ManageBookingsAdmin from "./administrator/ManageBookings";
 import ManageListingsAdmin from "./administrator/ManageListings";
@@ -95,12 +89,12 @@ import ReserveRental from "./ReserveRental";
 import About from "./About";
 import Faq from "./Faq";
 import Preferences from "./user/Preferences";
+import SigninPartner from "./Signinpartner";
+import Authme from "./Authme";
+import Recovery from "./Recovery";
 
-
-// Axios Configuration
 axios.defaults.baseURL = "https://smashapartments-kyto.onrender.com/";
 axios.defaults.withCredentials = true;
-
 
 function App() {
   return (
@@ -108,11 +102,14 @@ function App() {
     <div  id="google_translate_element"></div>
       <Navbar />
       <Routes>
-        {/* General Routes */}
         <Route path="/" element={<Home />} />
         <Route path="/listproperty" element={<ListProperty />} />
         <Route path="/createaccount" element={<CreateAccount />} />
         <Route path="/signin" element={<Signin />} />
+        <Route path="/authme" element={<Authme />} />
+        <Route path="/signin/recovery" element={<Recovery />} />
+        <Route path="/signinpartner/recovery" element={<Recovery />} />
+        <Route path="/signinpartner" element={< SigninPartner/>} />
         <Route path="/partnerdetails" element={<PartnerDetails />} />
         <Route path="/partnerpassword" element={<PartnerPassword />} />
         <Route path="/stays" element={<Stays />} />

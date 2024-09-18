@@ -3,10 +3,10 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { UserContext } from '../context/userContext'; // Adjust the path as necessary
 import { toast } from 'react-toastify';
-import { Link } from 'react-router-dom';
 import 'react-toastify/dist/ReactToastify.css';
+import { Link } from 'react-router-dom';
 
-export default function Signin() {
+export default function SigninPartner() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const navigate = useNavigate();
@@ -29,7 +29,7 @@ export default function Signin() {
     e.preventDefault(); // Prevent default form submission
 
     try {
-      const response = await axios.post('/login', { email, password }, { withCredentials: true });
+      const response = await axios.post('/loginpartner', { email, password }, { withCredentials: true });
 
       if (response.data.error) {
         toast.error(response.data.error);
@@ -39,8 +39,8 @@ export default function Signin() {
         
         // Redirect based on interface
         if (response.data.email) {
-          window.location.href = "/signin?user";
-        } 
+            window.location.href = "/signinpartner?partner";
+          }
       }
     } catch (error) {
       console.error('Login error:', error);
@@ -51,7 +51,7 @@ export default function Signin() {
   return (
     <>
       <div className="shade_2">
-        <h1>Customer signin</h1>
+        <h1>Partner signin</h1>
         <img src="assets/linear_bg.png" className="shade_bg" alt="" />
         <div className="shade_item">
           <img src="assets/bg (2).png" alt="" />
@@ -68,9 +68,9 @@ export default function Signin() {
       </div>
       <section className="form_area">
         <form onSubmit={handleSubmit}>
-          <h2>Sign in</h2>
+          <h2>Partner account</h2>
           <br />
-          <p>Sign in to book your property, flight, ride, or office space</p>
+          <p>Sign in to list your property, flight, ride, or office space</p>
           <br />
           <label htmlFor="email">Email address</label>
           <br />
@@ -91,18 +91,18 @@ export default function Signin() {
             onChange={(e) => setPassword(e.target.value)}
             required
           />
-          <br />
+           <br />
           <br />
           <Link to="recovery" className='link'>Forgot your password?</Link>
           <br />
           <br />
           <button type="submit" className="button_5 stick">
-           Proceed as customer
+            Proceed as partner
           </button>
           <div className="or">OR</div>
-          <Link to="/signinpartner">
+          <Link to="/signin">
             <div className="button nj">
-              Signin as partner
+              Signin as customer
             </div>
           </Link>
           <br />

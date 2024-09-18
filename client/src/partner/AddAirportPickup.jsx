@@ -35,7 +35,7 @@ export default function AddAirportPickup() {
 
   useEffect(() => {
     if (loading) return;
-    if (!user || user.account_type !== "partner") {
+    if (!user || user.interface !== "partner") {
       navigate("/signin");
     }
   }, [user, loading, navigate]);

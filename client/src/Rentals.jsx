@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { toast } from 'react-toastify'; // Import React Toastify
 
 export default function Rentals() {
   const location = useLocation();
@@ -27,6 +28,7 @@ export default function Rentals() {
         const response = await axios.get('/getrentals', {
           params: { limit: 5, offset: 0, location: locationParam, carType: carTypeParam },
         });
+        toast.success("Fetched listings");
         setRentals(response.data);
         setInitialRentals(response.data);
         setHasMore(response.data.length === 5);
@@ -83,6 +85,8 @@ export default function Rentals() {
   };
 
   const handleSearchSubmit = () => {
+    
+    toast("Searching...")
     const queryParams = new URLSearchParams();
     if (searchLocation) queryParams.append('location', searchLocation);
     if (searchCarType) queryParams.append('carType', searchCarType);

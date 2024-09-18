@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
+import { toast } from 'react-toastify'; // Import React Toastify
 
 export default function Pickups() {
   const location = useLocation();
@@ -25,6 +26,7 @@ export default function Pickups() {
         const response = await axios.get("/getpickups", {
           params: { limit: 5, offset: 0, airport: airportParam },
         });
+        toast.success("Fetched listings")
         setPickups(response.data);
         setInitialPickups(response.data);
         setHasMore(response.data.length === 5);
@@ -81,6 +83,7 @@ export default function Pickups() {
   };
 
   const handleSearchSubmit = () => {
+    toast("Searching...")
     const queryParams = new URLSearchParams();
     if (searchAirport) queryParams.append("airport", searchAirport);
 

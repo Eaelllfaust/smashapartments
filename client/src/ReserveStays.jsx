@@ -70,8 +70,8 @@ export default function ReserveStays() {
       return;
     }
 
-    if (user.account_type !== "user") {
-      toast.error("Please create a booking account to continue.");
+    if (user.interface !== "user") {
+      toast.error("Please signin as a customer to continue.");
       return;
     }
 
@@ -133,12 +133,12 @@ export default function ReserveStays() {
 
       if (response.status === 201) {
         toast.success(response.data.message);
-        if (user?.account_type) {
-          if (user.account_type === "administrator") {
+        if (user?.interface) {
+          if (user.interface === "administrator") {
             navigate("/administrator");
-          } else if (user.account_type === "partner") {
+          } else if (user.interface === "partner") {
             navigate("/partner");
-          } else if (user.account_type === "user") {
+          } else if (user.interface === "user") {
             navigate("/user");
           }
         }

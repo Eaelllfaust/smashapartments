@@ -15,7 +15,7 @@ export default function CarRentals() {
     if (loading) return;
     if (!user) {
       navigate("/signin");
-    } else if (user.account_type !== 'user') {
+    } else if (user.interface !== 'user') {
       navigate("/");
     } else {
       fetchRentals();

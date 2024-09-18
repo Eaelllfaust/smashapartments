@@ -21,6 +21,23 @@ const axios = require("axios");
 const PartnerEarning = require("../models/partnerearning");
 const UserComplaint = require("../models/usercomplaint");
 const Payout = require("../models/payout");
+const crypto = require('crypto');
+const Nodemailer = require("nodemailer");
+const { MailtrapTransport } = require("mailtrap");
+
+const TOKEN = "6be1e8192e8e628b29b60c5455c955f2";
+
+const transport = Nodemailer.createTransport(
+  MailtrapTransport({
+    token: TOKEN,
+  })
+);
+
+const sender = {
+  address: "mailtrap@smashapartments.com",
+  name: "Smash Apartments",
+};
+
 
 const test = (req, res) => {
   res.json("test is working");
@@ -755,7 +772,6 @@ const getCurrentPickups = async (req, res) => {
         .status(404)
         .json({ error: "No airport pickups found for this user" });
     }
-
     // Fetch associated service details and media for each pickup
     const pickupsWithDetails = await Promise.all(
       pickups.map(async (pickup) => {
@@ -764,12 +780,10 @@ const getCurrentPickups = async (req, res) => {
           const serviceDetails = await Service.findById(
             pickup.serviceId
           ).lean();
-
           // Fetch associated media
           const media = await MediaTag.find({
             listing_id: pickup.serviceId,
           }).lean();
-
           // Return pickup with service details and media
           return {
             ...pickup,
@@ -790,7 +804,6 @@ const getCurrentPickups = async (req, res) => {
         }
       })
     );
-
     res.status(200).json(pickupsWithDetails);
   } catch (error) {
     console.error("Error fetching user pickups:", error);
@@ -800,7 +813,6 @@ const getCurrentPickups = async (req, res) => {
 const getCoOfficeData = async (req, res) => {
   try {
     const { id } = req.params; // Get cooffice ID from request parameters
-
     // Fetch cooffice data by ID
     const cooffice = await OfficeSpace.findById(id).lean();
 
@@ -1863,6 +1875,7 @@ const getCooffices = async (req, res) => {
     res.status(500).json({ error: "Failed to fetch cooffices" });
   }
 };
+
 const getListings = async (req, res) => {
   try {
     const {
@@ -1879,11 +1892,16 @@ const getListings = async (req, res) => {
       ratings,
       limit,
       offset,
+      propertyType,
     } = req.query;
 
     const filters = {};
 
     // Add case-insensitive filter for location
+    if (propertyType) {
+      filters.property_type = propertyType;
+    }
+
     if (location) {
       filters.city = { $regex: new RegExp(location, "i") }; // Case-insensitive search for location
     }
@@ -2255,6 +2273,137 @@ const createOfficeListing = async (req, res) => {
   }
 };
 
+ const verifyAccount = async (req, res) => {
+  try {
+    const { email, code } = req.body;
+
+    // Find the user by email
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Check if the user is already verified
+    if (user.is_verified) {
+      return res.status(400).json({ error: "User is already verified" });
+    }
+
+    // Check if the provided code matches the stored code
+    if (user.code !== code) {
+      return res.status(400).json({ error: "Invalid verification code" });
+    }
+
+    // Update user as verified and clear the verification code
+    user.is_verified = true;
+    user.code = null;
+    await user.save();
+
+    return res.status(200).json({ message: "Account verified successfully" });
+  } catch (error) {
+    console.error("Error during account verification:", error);
+    return res.status(500).json({ error: "Server error, please try again later" });
+  }
+};
+const resetPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    // Validate email
+    if (!email) {
+      return res.json({
+        error: "Email is required",
+      });
+    }
+
+    // Check if user exists
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.json({
+        error: "No account found with this email",
+      });
+    }
+
+    // Generate new random password (12 characters)
+    const newPassword = crypto.randomBytes(6).toString('hex');
+
+    // Hash the new password
+    const hashedPassword = await hashPassword(newPassword);
+
+    // Update user's password
+    user.password = hashedPassword;
+    await user.save();
+
+    // Send recovery email
+    await sendRecoveryEmail(email, newPassword);
+
+    // Return success message
+    return res.json({
+      message: "Password reset. Check your email for the new password",
+    });
+  } catch (error) {
+    console.error("Error during password reset:", error);
+    return res.json({
+      error: "Server error, please try again later",
+    });
+  }
+};
+
+const sendRecoveryEmail = async (email, newPassword) => {
+  const htmlTemplate = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your SmashApartment.com Password Reset</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body style="font-family: 'Montserrat', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <header style="background-color: #ffffff; padding: 20px; text-align: center; border-bottom: 2px solid #221f60;">
+        <svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="100px" height="100px" viewBox="0 0 1000 1000" style="shape-rendering:geometricPrecision; text-rendering:geometricPrecision; image-rendering:optimizeQuality; fill-rule:evenodd; clip-rule:evenodd">
+            <!-- SVG path data here -->
+        </svg>
+    </header>
+    
+    <main style="padding: 20px;">
+        <h1 style="color: #221f60; font-family: 'Montserrat', Arial, sans-serif; font-weight: 700;">Password Reset</h1>
+        <p>Hello,</p>
+        <p>Your password for SmashApartment.com has been reset. Your new password is:</p>
+        <p style="font-size: 24px; font-weight: 700; color: #ff8c00; text-align: center;">${newPassword}</p>
+        <p>Please log in with this password and change it immediately for security reasons.</p>
+        <p>If you didn't request this password reset, please contact our support team immediately.</p>
+        <p>The SmashApartment.com Team</p>
+    </main>
+    
+    <footer style="background-color: #f4f4f4; padding: 20px; text-align: center; font-size: 12px;">
+        <p>This email is from SmashApartment.com. If you are receiving this email, it means that a password reset was requested for your account.</p>
+        <p>For support, please contact us at: <a href="mailto:support@smashapartment.com" style="color: #ff8c00;">support@smashapartment.com</a></p>
+        <p>&copy; 2024 SmashApartment.com. All rights reserved.</p>
+        <p><a href="#" style="color: #ff8c00;">Privacy Policy</a> | <a href="#" style="color: #ff8c00;">Terms of Service</a></p>
+    </footer>
+</body>
+</html>
+  `;
+
+  const mailOptions = {
+    from: sender,
+    to: [email],
+    subject: "Your SmashApartment.com Password Has Been Reset",
+    text: `Your new password is: ${newPassword}`,
+    html: htmlTemplate,
+    category: "Password Reset",
+  };
+
+  try {
+    const result = await transport.sendMail(mailOptions);
+    console.log("Password reset email sent successfully:", result);
+  } catch (error) {
+    console.error("Error sending password reset email:", error);
+    throw error;
+  }
+};
+
 // Register endpoint
 const registerUser = async (req, res) => {
   try {
@@ -2278,22 +2427,30 @@ const registerUser = async (req, res) => {
     const exist = await User.findOne({ email });
     if (exist) {
       return res.json({
-        error: "Email is already taken",
+        error: "Account exists. Sign in as a partner or customer",
       });
     }
+
+    // Generate 6-digit verification code
+    const verificationCode = crypto.randomInt(100000, 999999).toString();
 
     // Hash the password using the helper function
     const hashedPassword = await hashPassword(password);
 
-    // Create the user with hashed password
+    // Create the user with hashed password and verification code
     const user = await User.create({
       email,
       password: hashedPassword,
+      is_verified: false,
+      code: verificationCode,
     });
+
+    // Send verification email
+    await sendVerificationEmail(email, verificationCode);
 
     // Return the created user (without password)
     return res.json({
-      message: "User registered successfully",
+      message: "Check your email for verification code",
       user: {
         id: user._id,
         email: user.email,
@@ -2307,12 +2464,130 @@ const registerUser = async (req, res) => {
   }
 };
 
-// Login endpoint
+// Function to send verification email using Mailtrap
+const sendVerificationEmail = async (email, code) => {
+  const htmlTemplate = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your SmashApartment.com Account Creation Code</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body style="font-family: 'Montserrat', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <header style="background-color: #ffffff; padding: 20px; text-align: center; border-bottom: 2px solid #221f60;">
+        <svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="100px" height="100px" viewBox="0 0 1000 1000" style="shape-rendering:geometricPrecision; text-rendering:geometricPrecision; image-rendering:optimizeQuality; fill-rule:evenodd; clip-rule:evenodd">
+            <g>
+                <path style="opacity:0.988" fill="#221f60" d="M 452.5,184.5 C 486.74,184.171 520.906,184.504 555,185.5C 588.705,260.408 622.538,335.241 656.5,410C 622.833,410.667 589.167,410.667 555.5,410C 538.004,369.517 520.504,329.017 503,288.5C 490.962,317.406 478.796,346.239 466.5,375C 508.129,466.425 549.629,557.925 591,649.5C 592.15,651.754 592.484,654.087 592,656.5C 581.443,682.615 570.609,708.615 559.5,734.5C 498.837,735.5 438.17,735.833 377.5,735.5C 377.5,710.5 377.5,685.5 377.5,660.5C 413.3,659.483 448.967,657.983 484.5,656C 444.833,563 405.167,470 365.5,377C 394.915,313.005 423.915,248.838 452.5,184.5 Z"/>
+            </g>
+            <g>
+                <path style="opacity:0.984" fill="#221f60" d="M 327.5,463.5 C 345.423,501.21 362.423,539.543 378.5,578.5C 356.574,630.851 334.241,683.017 311.5,735C 276.162,735.833 240.829,735.667 205.5,734.5C 245.907,644.022 286.573,553.689 327.5,463.5 Z"/>
+            </g>
+            <g>
+                <path style="opacity:0.987" fill="#221f60" d="M 546.5,465.5 C 591.739,465.17 636.905,465.503 682,466.5C 722.733,555.963 762.9,645.629 802.5,735.5C 766.5,735.5 730.5,735.5 694.5,735.5C 665.968,667.747 637.135,600.08 608,532.5C 587.576,531.507 567.076,531.173 546.5,531.5C 546.5,509.5 546.5,487.5 546.5,465.5 Z"/>
+            </g>
+        </svg>
+    </header>
+    
+    <main style="padding: 20px;">
+        <h1 style="color: #221f60; font-family: 'Montserrat', Arial, sans-serif; font-weight: 700;">Verification OTP</h1>
+        <p>Hello,</p>
+        <p>Thank you for creating an account with SmashApartment.com. To complete your registration, please use the following code:</p>
+        <p style="font-size: 24px; font-weight: 700; color: #ff8c00; text-align: center;">${code}</p>
+        <p>If you didn't request this code, please ignore this email.</p>
+        <p>Happy booking!</p>
+        <p>The SmashApartment.com Team</p>
+    </main>
+    
+    <footer style="background-color: #f4f4f4; padding: 20px; text-align: center; font-size: 12px;">
+        <p>This email is from SmashApartment.com. If you are receiving this email, it means that you or someone else used this email address to create an account with us.</p>
+        <p>For support, please contact us at: <a href="mailto:support@smashapartment.com" style="color: #ff8c00;">support@smashapartment.com</a></p>
+        <p>&copy; 2024 SmashApartment.com. All rights reserved.</p>
+        <p><a href="#" style="color: #ff8c00;">Privacy Policy</a> | <a href="#" style="color: #ff8c00;">Terms of Service</a></p>
+    </footer>
+</body>
+</html>
+  `;
 
+  const mailOptions = {
+    from: sender,
+    to: [email],
+    subject: "Verify Your SmashApartment.com Account",
+    text: `Your verification code is: ${code}`,
+    html: htmlTemplate,
+    category: "Verification",
+  };
+
+  try {
+    const result = await transport.sendMail(mailOptions);
+    console.log("Email sent successfully:", result);
+  } catch (error) {
+    console.error("Error sending email:", error);
+    throw error;
+  }
+};
+// Login endpoint
+const sendLoginEmail = async (email, loginTime) => {
+  const htmlTemplate = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Notification - SmashApartment.com</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body style="font-family: 'Montserrat', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <header style="background-color: #ffffff; padding: 20px; text-align: center; border-bottom: 2px solid #221f60;">
+        <svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="100px" height="100px" viewBox="0 0 1000 1000" style="shape-rendering:geometricPrecision; text-rendering:geometricPrecision; image-rendering:optimizeQuality; fill-rule:evenodd; clip-rule:evenodd">
+            <!-- SVG content here (same as in the verification email) -->
+        </svg>
+    </header>
+    
+    <main style="padding: 20px;">
+        <h1 style="color: #221f60; font-family: 'Montserrat', Arial, sans-serif; font-weight: 700;">Login Notification</h1>
+        <p>Hello,</p>
+        <p>We detected a new sign-in to your SmashApartment.com account.</p>
+        <p>Time of login: <strong>${loginTime}</strong></p>
+        <p>If this was you, no further action is needed. If you didn't sign in to your account at this time, please contact our support team immediately.</p>
+        <p>Thank you for using SmashApartment.com!</p>
+        <p>Best regards,</p>
+        <p>The SmashApartment.com Team</p>
+    </main>
+    
+    <footer style="background-color: #f4f4f4; padding: 20px; text-align: center; font-size: 12px;">
+        <p>This is an automated message from SmashApartment.com. Please do not reply to this email.</p>
+        <p>For support, please contact us at: <a href="mailto:support@smashapartment.com" style="color: #ff8c00;">support@smashapartment.com</a></p>
+        <p>&copy; 2024 SmashApartment.com. All rights reserved.</p>
+        <p><a href="#" style="color: #ff8c00;">Privacy Policy</a> | <a href="#" style="color: #ff8c00;">Terms of Service</a></p>
+    </footer>
+</body>
+</html>
+  `;
+
+  const mailOptions = {
+    from: sender,
+    to: [email],
+    subject: "New Login to Your SmashApartment.com Account",
+    text: `A new login to your account was detected at ${loginTime}. If this wasn't you, please contact support.`,
+    html: htmlTemplate,
+    category: "Login Notification",
+  };
+
+  try {
+    const result = await transport.sendMail(mailOptions);
+    console.log("Login notification email sent successfully:", result);
+  } catch (error) {
+    console.error("Error sending login notification email:", error);
+    throw error;
+  }
+};
 const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    // Find the user by email
     const user = await User.findOne({ email });
     if (!user) {
       return res.json({
@@ -2320,6 +2595,14 @@ const loginUser = async (req, res) => {
       });
     }
 
+    // Check if the user is verified
+    if (!user.is_verified) {
+      return res.json({
+        error: "Please verify your email. Check your inbox for the verification code.",
+      });
+    }
+
+    // Compare the password
     const isMatch = await comparePassword(password, user.password);
     if (!isMatch) {
       return res.json({
@@ -2327,12 +2610,29 @@ const loginUser = async (req, res) => {
       });
     }
 
+    // Update account_type if it is 'partner'
+    if (user.account_type === 'partner') {
+      user.account_type = 'user_partner';
+      await user.save(); // Save the updated account_type
+    }
+
+    // Sign the JWT token and add 'interface': 'user' to the payload
     jwt.sign(
-      { email: user.email, id: user._id, first_name: user.first_name },
+      { 
+        email: user.email, 
+        id: user._id, 
+        first_name: user.first_name,
+        interface: 'user'  // Add 'interface': 'user' to the JWT payload
+      },
       process.env.JWT_SECRET,
       {},
-      (err, token) => {
+      async (err, token) => {
         if (err) throw err;
+        
+        // Send login notification email
+        const loginTime = new Date().toLocaleString();
+        await sendLoginEmail(user.email, loginTime);
+        
         res.cookie("token", token).json(user);
       }
     );
@@ -2344,6 +2644,71 @@ const loginUser = async (req, res) => {
   }
 };
 
+const loginPartner = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // Find the user by email
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.json({
+        error: "User not found",
+      });
+    }
+
+    // Check if the user is verified
+    if (!user.is_verified) {
+      return res.json({
+        error: "Please verify your email. Check your inbox for the verification code.",
+      });
+    }
+
+    // Compare the password
+    const isMatch = await comparePassword(password, user.password);
+    if (!isMatch) {
+      return res.json({
+        error: "Invalid credentials",
+      });
+    }
+
+    // Update account_type if necessary
+    if (user.account_type === 'user') {
+      user.account_type = 'user_partner';
+      await user.save(); // Save the updated account_type to the database
+    }
+
+    // Sign the JWT token and add 'interface': 'partner' to the payload
+    jwt.sign(
+      { 
+        email: user.email, 
+        id: user._id, 
+        first_name: user.first_name,
+        interface: 'partner'  // Add 'interface': 'partner' to the JWT payload
+      },
+      process.env.JWT_SECRET,
+      {},
+      async (err, token) => {
+        if (err) throw err;
+        
+        // Send login notification email
+        const loginTime = new Date().toLocaleString();
+        try {
+          await sendLoginEmail(user.email, loginTime);
+        } catch (emailError) {
+          console.error("Error sending login notification email:", emailError);
+          // Continue with login process even if email fails
+        }
+        
+        res.cookie("token", token).json(user);
+      }
+    );
+  } catch (error) {
+    console.error("Error during login:", error);
+    return res.json({
+      error: "Server error, please try again later",
+    });
+  }
+};
 const logoutUser = (req, res) => {
   res.clearCookie("token");
   res.sendStatus(200);
@@ -2464,6 +2829,7 @@ const getFullProfile = async (req, res) => {
         date_joined: user.date_joined,
         status: user.status,
         role: user.role,
+        interface: decoded.interface
       };
 
       res.json(userProfile);
@@ -2483,7 +2849,7 @@ const updatePartnerDetails = async (req, res) => {
       }
       try {
         const user = await User.findOne({ email: decoded.email });
-        if (!user || user.account_type !== "partner") {
+        if (!user) {
           return res.json({ error: "Partner not found" });
         }
 
@@ -2507,6 +2873,7 @@ const updatePartnerDetails = async (req, res) => {
           phone_number: user.phone_number,
           contact_email: user.contact_email,
           address: user.address,
+          interface: 'partner'
         });
       } catch (error) {
         res.json({ error: "Internal server error" });
@@ -2545,6 +2912,7 @@ const updateUserDetails = async (req, res) => {
           first_name: user.first_name,
           last_name: user.last_name,
           phone_number: user.phone_number,
+          interface: 'user'
         });
       } catch (error) {
         res.json({ error: "Internal server error" });
@@ -2583,7 +2951,6 @@ const updatePayment = async (req, res) => {
             card_exp_year: req.body.card_exp_year || "",
             cvv: req.body.cvv || "",
           });
-          
         } else {
           // Update payment method if it exists
           paymentMethod.name_on_card =
@@ -2661,21 +3028,24 @@ const getPaymentMethod = async (req, res) => {
   }
 };
 
-const createPartner = async (req, res) => {
+ const createPartner = async (req, res) => {
   try {
     // Extract user details from request body
     const { email, firstName, lastName, phoneNumber, password } = req.body;
 
     // Check if all required fields are provided
     if (!email || !firstName || !lastName || !phoneNumber || !password) {
-      return res.json({ error: "All fields are required" });
+      return res.status(400).json({ error: "All fields are required" });
     }
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.json({ error: "User already exists" });
+      return res.status(400).json({ error: "User already exists" });
     }
+
+    // Generate 6-digit verification code
+    const verificationCode = crypto.randomInt(100000, 999999).toString();
 
     // Hash the password before saving
     const hashedPassword = await hashPassword(password);
@@ -2689,13 +3059,18 @@ const createPartner = async (req, res) => {
       password: hashedPassword,
       account_type: "partner",
       role: "partner",
+      is_verified: false,
+      code: verificationCode,
     });
 
     // Save the new user to the database
     await newUser.save();
 
+    // Send verification email
+    await sendVerificationEmail(email, verificationCode);
+
     // Respond with success message
-    res.status(201).json({ message: "Partner account created successfully" });
+    res.status(201).json({ message: "Check your email for verification code" });
   } catch (error) {
     console.error("Error creating partner account:", error);
     res.status(500).json({ error: "Internal server error" });
@@ -2757,5 +3132,8 @@ module.exports = {
   getEndedBookings,
   getAllBookings,
   updatebookingstatus,
+  loginPartner,
+  verifyAccount,
+  resetPassword,
   upload,
 };

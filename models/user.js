@@ -17,7 +17,7 @@ const userSchema = new Schema({
     },
     account_type: {
         type: String,
-        enum: ['user', 'partner', 'admin'], 
+        enum: ['user', 'partner', 'user_partner', 'admin'], 
         default: 'user',
     },
     first_name: {
@@ -49,6 +49,14 @@ const userSchema = new Schema({
         type: String,
         enum: ['active', 'inactive', 'suspended'],
         default: 'active',
+    },
+    is_verified: {
+        type: Boolean,
+        default: false
+    },
+    code: {
+        type: String,
+        default: "000000"
     },
     role: {
         type: String,

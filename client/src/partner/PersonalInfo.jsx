@@ -23,7 +23,7 @@ export default function PersonalInfo() {
     if (loading) return;
     if (!user) {
       navigate("/signin");
-    } else if (user.account_type !== 'partner') {
+    } else if (user.interface !== 'partner') {
       navigate("/");
     } else {
       setFormData({

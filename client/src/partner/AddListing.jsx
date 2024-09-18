@@ -11,7 +11,7 @@ export default function AddListing() {
     if (loading) return; // Wait until loading is complete
     if (!user) {
       navigate("/signin"); // Redirect to sign-in if no user is found
-    } else if (user.account_type !== 'partner') {
+    } else if (user.interface !== 'partner') {
       navigate("/"); // Redirect if the user is not of type 'user'
     }
   }, [user, loading, navigate]);

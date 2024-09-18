@@ -17,7 +17,7 @@ export default function ManageListings() {
     if (loading) return;
     if (!user) {
       navigate("/signin");
-    } else if (user.account_type !== "partner") {
+    } else if (user.interface !== "partner") {
       navigate("/");
     } else {
       const fetchActiveListingsNum = async () => {

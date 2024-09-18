@@ -14,7 +14,7 @@ export default function AllInactiveListings() {
     if (loading) return;
     if (!user) {
       navigate("/signin");
-    } else if (user.account_type !== 'partner') {
+    } else if (user.interface !== 'partner') {
       navigate("/");
     } else {
       // Fetch active and inactive listings

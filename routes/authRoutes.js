@@ -57,6 +57,9 @@ const {
   getEndedBookings,
   getAllBookings,
   updatebookingstatus,
+  loginPartner,
+  verifyAccount,
+  resetPassword,
 } = require("../controllers/authController");
 
 //middleware
@@ -68,9 +71,13 @@ const corsOptions = {
 
 router.use(cors(corsOptions));
 
+
 router.get("/", test);
 router.post("/register", registerUser);
 router.post("/login", loginUser);
+router.post("/resetpassword", resetPassword);
+router.post("/verifyaccount", verifyAccount);
+router.post("/loginpartner", loginPartner);
 router.get("/profile", getFullProfile);
 router.post("/logout", logoutUser);
 router.put("/updateuser", updateUserDetails);

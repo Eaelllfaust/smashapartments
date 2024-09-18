@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import apiClient from './apiClient';
+import { toast } from 'react-toastify'; // Import React Toastify
 
 export default function Cooffice() {
   const location = useLocation();
@@ -17,7 +17,6 @@ export default function Cooffice() {
   const [searchLocation, setSearchLocation] = useState('');
   const [searchOfficeType, setSearchOfficeType] = useState('');
 
-  // Extract query params
   const params = new URLSearchParams(location.search);
   const locationParam = params.get('location');
   const officeTypeParam = params.get('officeType');
@@ -28,6 +27,7 @@ export default function Cooffice() {
         const response = await axios.get('/getcooffices', {
           params: { limit: 5, offset: 0, location: locationParam, officeType: officeTypeParam },
         });
+        toast.success("Fetched listings")
         setCooffices(response.data);
         setInitialCooffices(response.data);
         setHasMore(response.data.length === 5);
@@ -85,6 +85,7 @@ export default function Cooffice() {
   };
 
   const handleSearchSubmit = () => {
+    toast("Searching...")
     const queryParams = new URLSearchParams();
     if (searchLocation) queryParams.append('location', searchLocation);
     if (searchOfficeType) queryParams.append('officeType', searchOfficeType);
