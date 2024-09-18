@@ -25,7 +25,7 @@ const crypto = require('crypto');
 const Nodemailer = require("nodemailer");
 const { MailtrapTransport } = require("mailtrap");
 
-const TOKEN = "6be1e8192e8e628b29b60c5455c955f2";
+const TOKEN = process.env.TOKEN_NEW
 
 const transport = Nodemailer.createTransport(
   MailtrapTransport({
