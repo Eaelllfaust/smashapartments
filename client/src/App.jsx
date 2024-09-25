@@ -89,7 +89,7 @@ import ReserveRental from "./ReserveRental";
 import About from "./About";
 import Faq from "./Faq";
 import Preferences from "./user/Preferences";
-import SigninPartner from "./Signinpartner";
+import SigninPartner from "./SigninPartner";
 import Authme from "./Authme";
 import Recovery from "./Recovery";
 import SigninAdmin from "./SiginAdmin";
