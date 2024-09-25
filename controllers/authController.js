@@ -41,7 +41,17 @@ const sender = {
 const test = (req, res) => {
   res.json("test is working");
 };
-
+const payoutDetails = async (req, res) => {
+  try {
+    const payout = await Payout.findOne({ userId: req.params.userId });
+    if (!payout) {
+      return res.status(404).json({ message: 'Payout details not found' });
+    }
+    res.json(payout);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching payout details', error: error.message });
+  }
+};
 const updateStatus = async (req, res) => {
   const { type, id, status } = req.body;
 
@@ -3861,5 +3871,6 @@ module.exports = {
   userAnalytics,
   usersJoiningOverTime,
   bookingData,
+  payoutDetails,
   upload,
 };

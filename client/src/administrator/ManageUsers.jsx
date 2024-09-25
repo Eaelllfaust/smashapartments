@@ -14,6 +14,7 @@ export default function ManageUsers() {
   const [allUsers, setAllUsers] = useState(0);
   const [users, setUsers] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [payoutDetails, setPayoutDetails] = useState({});
 
   useEffect(() => {
     if (loading) return;
@@ -28,6 +29,34 @@ export default function ManageUsers() {
     }
   }, [user, loading, navigate]);
 
+  const fetchPayoutDetails = async (userId) => {
+    try {
+      const response = await axios.get(`/payoutdetails/${userId}`);
+      setPayoutDetails(prevDetails => ({
+        ...prevDetails,
+        [userId]: response.data
+      }));
+    } catch (error) {
+      console.error("Error fetching payout details", error);
+      toast.error('Failed to fetch payout details. Please try again.');
+    }
+  };
+
+  const togglePayoutDetails = (userId) => {
+    if (payoutDetails[userId]) {
+      // If details are already loaded, just toggle visibility
+      setPayoutDetails(prevDetails => ({
+        ...prevDetails,
+        [userId]: {
+          ...prevDetails[userId],
+          visible: !prevDetails[userId].visible
+        }
+      }));
+    } else {
+      // If details are not loaded, fetch them
+      fetchPayoutDetails(userId);
+    }
+  };
   const fetchActiveUsers = async () => {
     try {
       const response = await axios.get(`/activeusers`);
@@ -208,7 +237,23 @@ export default function ManageUsers() {
                   <option value="suspended">suspended</option>
                 </select>
               </div>
+              <div 
+                className="button"
+                onClick={() => togglePayoutDetails(user._id)}
+              >
+                {payoutDetails[user._id]?.visible ? 'Hide payout details' : 'View payout details'}
+              </div>
             </div>
+            {payoutDetails[user._id]?.visible && (
+              <div className="payout-details">
+                <h3>Payout Details</h3>
+                <br />
+                <p>Account Name: {payoutDetails[user._id].accountName}</p>
+                <p>Account Number: {payoutDetails[user._id].accountNumber}</p>
+                <p>Bank Name: {payoutDetails[user._id].bankName}</p>
+              </div>
+            )}
+
           </div>
         ))}
       </section>

@@ -79,6 +79,7 @@ const {
   userAnalytics,
   usersJoiningOverTime,
   bookingData,
+  payoutDetails,
 } = require("../controllers/authController");
 
 router.use(
@@ -115,6 +116,7 @@ router.get("/userjoiningovertime", usersJoiningOverTime);
 router.get("/bookingstatus", bookingStatus);
 router.get("/bookingsovertime", bookingsOverTime);
 router.get("/revenuebylisting", revenueByListing);
+router.get("/payoutdetails/:userId", payoutDetails);
 // router.get("/totalrevenue", totalEarning);
 router.get("/getallbookings/:userId", getAllBookings);
 router.get("/getallbookingsgeneral", getAllBookingsGeneral);
