@@ -73,7 +73,7 @@ export default function Navbar() {
   // Redirect user based on account type
   const handleAccountRedirect = () => {
     if (user?.interface) {
-      if (user.interface === "administrator") {
+      if (user.interface === "admin") {
         navigate("/administrator");
       } else if (user.interface === "partner") {
         navigate("/partner");

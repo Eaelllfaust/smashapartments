@@ -94,7 +94,7 @@ export default function StaysDetails() {
                 <img
                     src={
                       listing.images?.[0]?.url
-                        ? `https://smashapartments-kyto.onrender.com/uploads/${listing.images[0].media_name}`
+                        ? `https://smashapartments.com/uploads/${listing.images[0].media_name}`
                         : "/assets/properties (2).png"
                     }
                     alt={listing.property_name || "Property Image"}

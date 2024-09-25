@@ -150,7 +150,7 @@ export default function ReservePickup() {
                   {serviceDetails.images &&
                     serviceDetails.images.length > 0 && (
                       <img
-                        src={`https://smashapartments-kyto.onrender.com/uploads/${serviceDetails.images[0].media_name}`}
+                        src={`https://smashapartments.com/uploads/${serviceDetails.images[0].media_name}`}
                         alt="Service"
                       />
                     )}

@@ -21,11 +21,11 @@ const axios = require("axios");
 const PartnerEarning = require("../models/partnerearning");
 const UserComplaint = require("../models/usercomplaint");
 const Payout = require("../models/payout");
-const crypto = require('crypto');
+const crypto = require("crypto");
 const Nodemailer = require("nodemailer");
 const { MailtrapTransport } = require("mailtrap");
 
-const TOKEN = process.env.TOKEN_NEW
+const TOKEN = " 63363cda2f262b1fc829c8f1fa43d068";
 
 const transport = Nodemailer.createTransport(
   MailtrapTransport({
@@ -37,7 +37,6 @@ const sender = {
   address: "mailtrap@smashapartments.com",
   name: "Smash Apartments",
 };
-
 
 const test = (req, res) => {
   res.json("test is working");
@@ -989,6 +988,382 @@ const getUserBookings = async (req, res) => {
   }
 };
 
+const getUsers = async (req, res) => {
+  try {
+    // Find users where account_type is not "admin" and exclude password from the results
+    const users = await User.find(
+      { account_type: { $ne: "admin" } },
+      "-password"
+    );
+    res.json(users);
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Error fetching users", error: error.message });
+  }
+};
+
+async function aggregateRevenueFromSchema(schema, schemaName, dateField = 'createdAt', priceField = 'totalPrice') {
+  try {
+    return await schema.aggregate([
+      {
+        $group: {
+          _id: {
+            $dateToString: { format: "%Y-%m-%d", date: `$${dateField}` }
+          },
+          totalRevenue: { $sum: `$${priceField}` } // Sum up the revenue using the correct price field
+        }
+      },
+      { $sort: { _id: 1 } }
+    ]);
+  } catch (error) {
+    console.error(`Error aggregating revenue from ${schemaName}:`, error);
+    throw error; // Rethrow so we can catch it later
+  }
+}
+
+
+const revenue = async (req, res) => {
+  try {
+    const revenueData = await Promise.all([
+      aggregateRevenueFromSchema(ServiceBooking, 'ServiceBooking', 'createdAt', 'totalPrice'),
+      aggregateRevenueFromSchema(Rental, 'Rental', 'createdAt', 'rentalPrice'),
+      aggregateRevenueFromSchema(CoofficeBooking, 'CoofficeBooking', 'createdAt', 'totalPrice'),
+      aggregateRevenueFromSchema(Booking, 'Booking', 'createdAt', 'totalPrice') // Use createdAt for bookings
+    ]);
+
+    // Combine all the revenue data
+    const combinedData = revenueData.flat();
+
+    const dates = combinedData.map(item => item._id);
+    const amounts = combinedData.map(item => item.totalRevenue);
+
+    res.json({
+      dates,
+      amounts,
+      total: amounts.reduce((acc, curr) => acc + curr, 0)
+    });
+  } catch (error) {
+    console.error('Error fetching revenue data:', error);
+    res.status(500).json({ message: 'Error fetching revenue data', error: error.message });
+  }
+};
+
+async function aggregateStatusFromSchema(schema) {
+  return await schema.aggregate([
+    {
+      $group: {
+        _id: "$status",
+        count: { $sum: 1 },
+      },
+    },
+  ]);
+}
+
+const bookingStatus = async (req, res) => {
+  try {
+    const statusData = await Promise.all([
+      aggregateStatusFromSchema(ServiceBooking),
+      aggregateStatusFromSchema(Rental),
+      aggregateStatusFromSchema(CoofficeBooking),
+      aggregateStatusFromSchema(Booking),
+    ]);
+
+    // Combine all the status data
+    const combinedData = statusData.flat();
+
+    const statuses = ["pending", "confirmed", "reserved", "cancelled", "ended"];
+    const counts = statuses.map((status) => {
+      const found = combinedData.find((item) => item._id === status);
+      return found ? found.count : 0;
+    });
+
+    res.json({ counts });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Error fetching booking status data", error });
+  }
+};
+
+async function aggregateBookingsFromSchema(schema) {
+  return await schema.aggregate([
+    {
+      $group: {
+        _id: {
+          $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } // Use createdAt
+        },
+        count: { $sum: 1 }
+      }
+    },
+    { $sort: { _id: 1 } }
+  ]);
+}
+const bookingsOverTime = async (req, res) => {
+  try {
+    const bookingsData = await Promise.all([
+      aggregateBookingsFromSchema(ServiceBooking),
+      aggregateBookingsFromSchema(Rental),
+      aggregateBookingsFromSchema(CoofficeBooking),
+      aggregateBookingsFromSchema(Booking)
+    ]);
+
+    const combinedData = bookingsData.flat();
+
+    const dates = combinedData.map(item => item._id);
+    const counts = combinedData.map(item => item.count);
+
+    res.json({ dates, counts });
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching bookings over time data', error });
+  }
+};
+
+async function aggregateRevenueByListingFromSchema(schema) {
+  return await schema.aggregate([
+    {
+      $match: {
+        listingId: { $exists: true, $ne: null } // Ensure listingId is present
+      }
+    },
+    {
+      $group: {
+        _id: "$listingId", // Group by listingId
+        totalRevenue: { $sum: "$totalPrice" } // Sum the totalPrice
+      }
+    }
+  ]);
+}
+
+const revenueByListing = async (req, res) => {
+  try {
+    const revenueByListingData = await Promise.all([
+      aggregateRevenueByListingFromSchema(ServiceBooking),
+      aggregateRevenueByListingFromSchema(Rental),
+      aggregateRevenueByListingFromSchema(CoofficeBooking),
+      aggregateRevenueByListingFromSchema(Booking)
+    ]);
+
+    // Combine all the revenue by listing data
+    const combinedData = revenueByListingData.flat();
+
+    // If listingId is an ObjectId, convert it to a string for labels
+    const labels = combinedData.map(item => item._id ? item._id.toString() : "Unknown Listing"); // Fallback for missing listingId
+    const revenues = combinedData.map(item => item.totalRevenue);
+
+    res.json({ labels, revenues });
+  } catch (error) {
+    console.error(error); // Log the error for debugging
+    res.status(500).json({ message: 'Error fetching revenue by listing type data', error });
+  }
+};
+const userAnalytics =  async (req, res) => {
+  try {
+    const totalUsers = await User.countDocuments();
+    const activeUsers = await User.countDocuments({ status: 'active' });
+    const inactiveUsers = await User.countDocuments({ status: 'inactive' });
+
+    res.json({
+      totalUsers,
+      activeUsers,
+      inactiveUsers,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching user analytics", error });
+  }
+};
+const bookingData = async (req, res) => {
+  try {
+    const currentYear = new Date().getFullYear();
+    const startDate = new Date(currentYear, 0, 1);
+    const endDate = new Date(currentYear, 11, 31);
+
+    const aggregateBookings = async (Model) => {
+      return await Model.aggregate([
+        {
+          $match: {
+            createdAt: { $gte: startDate, $lte: endDate }
+          }
+        },
+        {
+          $group: {
+            _id: { $month: "$createdAt" },
+            count: { $sum: 1 }
+          }
+        },
+        {
+          $sort: { "_id": 1 }
+        }
+      ]);
+    };
+
+    const countStatuses = async (Model) => {
+      return await Model.aggregate([
+        {
+          $group: {
+            _id: "$status",
+            count: { $sum: 1 }
+          }
+        }
+      ]);
+    };
+
+    const [staysBookings, coofficeBookings, rentalBookings, serviceBookings] = await Promise.all([
+      aggregateBookings(Booking),
+      aggregateBookings(CoofficeBooking),
+      aggregateBookings(Rental),
+      aggregateBookings(ServiceBooking)
+    ]);
+
+    const [staysStatuses, coofficeStatuses, rentalStatuses, serviceStatuses] = await Promise.all([
+      countStatuses(Booking),
+      countStatuses(CoofficeBooking),
+      countStatuses(Rental),
+      countStatuses(ServiceBooking)
+    ]);
+
+    const monthlyData = Array(12).fill(0);
+    [staysBookings, coofficeBookings, rentalBookings, serviceBookings].forEach(bookings => {
+      bookings.forEach(booking => {
+        monthlyData[booking._id - 1] += booking.count;
+      });
+    });
+
+    const statusCounts = {
+      pending: 0,
+      confirmed: 0,
+      reserved: 0,
+      cancelled: 0,
+      ended: 0
+    };
+
+    [staysStatuses, coofficeStatuses, rentalStatuses, serviceStatuses].forEach(statuses => {
+      statuses.forEach(status => {
+        if (statusCounts.hasOwnProperty(status._id)) {
+          statusCounts[status._id] += status.count;
+        }
+      });
+    });
+
+    res.json({
+      months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+      counts: monthlyData,
+      statusCounts
+    });
+  } catch (error) {
+    console.error('Error fetching booking data:', error);
+    res.status(500).json({ message: 'Error fetching booking data' });
+  }
+}
+const usersJoiningOverTime =  async (req, res) => {
+  try {
+    const usersOverTime = await User.aggregate([
+      {
+        $group: {
+          _id: { 
+            year: { $year: "$date_joined" }, 
+            month: { $month: "$date_joined" } 
+          },
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $sort: { "_id.year": 1, "_id.month": 1 } // Sorting by year and month
+      }
+    ]);
+
+    res.status(200).json(usersOverTime);
+  } catch (error) {
+    console.error("Error fetching users joining over time:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+
+
+const updateUserStatus = async (req, res) => {
+  const { userId, status } = req.body;
+  try {
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { status },
+      { new: true }
+    );
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    res.json({ message: "User status updated successfully", user });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Error updating user status", error: error.message });
+  }
+};
+
+const getAllListingsGeneral = async (req, res) => {
+  try {
+    const { ownerId } = req.params;
+
+    // Fetch all listings for the given owner irrespective of their status
+    const stayListings = await StayListing.find().lean();
+
+    const services = await Service.find().lean();
+
+    const officeSpaces = await OfficeSpace.find().lean();
+
+    const carRentals = await CarRental.find().lean();
+
+    const stayListingsWithImages = await Promise.all(
+      stayListings.map(async (listing) => {
+        const images = await MediaTag.find({
+          listing_id: listing._id,
+        }).lean();
+        return { ...listing, images, type: "stay" };
+      })
+    );
+
+    const servicesWithImages = await Promise.all(
+      services.map(async (service) => {
+        const images = await MediaTag.find({
+          listing_id: service._id,
+        }).lean();
+        return { ...service, images, type: "service" };
+      })
+    );
+
+    const officeSpacesWithImages = await Promise.all(
+      officeSpaces.map(async (office) => {
+        const images = await MediaTag.find({
+          listing_id: office._id,
+        }).lean();
+        return { ...office, images, type: "office" };
+      })
+    );
+
+    const carRentalsWithImages = await Promise.all(
+      carRentals.map(async (carRental) => {
+        const images = await MediaTag.find({
+          listing_id: carRental._id,
+        }).lean();
+        return { ...carRental, images, type: "rental" };
+      })
+    );
+
+    // Combine all listings with their respective images and types
+    const allListingsWithImagesAndTypes = [
+      ...stayListingsWithImages,
+      ...servicesWithImages,
+      ...officeSpacesWithImages,
+      ...carRentalsWithImages,
+    ];
+
+    // Respond with all listings and their associated images and types
+    res.status(200).json(allListingsWithImagesAndTypes);
+  } catch (error) {
+    console.error("Error fetching listings:", error);
+    res.status(500).json({ error: "Failed to fetch listings" });
+  }
+};
 const getAllListings = async (req, res) => {
   try {
     const { ownerId } = req.params;
@@ -1062,6 +1437,7 @@ const getAllListings = async (req, res) => {
     res.status(500).json({ error: "Failed to fetch listings" });
   }
 };
+
 const updatebookingstatus = async (req, res) => {
   const { bookingId, status, type } = req.body;
 
@@ -1193,8 +1569,78 @@ const getAllBookings = async (req, res) => {
     res.status(500).json({ error: "Failed to fetch bookings" });
   }
 };
+const getAllBookingsGeneral = async (req, res) => {
+  try {
+    const { userId } = req.params;
 
-module.exports = getAllBookings;
+    const stayListings = await StayListing.find().select("_id").lean();
+    const officeSpaces = await OfficeSpace.find().select("_id").lean();
+    const carRentals = await CarRental.find().select("_id").lean();
+    const services = await Service.find().select("_id").lean();
+
+    const stayListingIds = stayListings.map((listing) => listing._id);
+    const officeSpaceIds = officeSpaces.map((listing) => listing._id);
+    const carRentalIds = carRentals.map((listing) => listing._id);
+    const serviceIds = services.map((listing) => listing._id);
+
+    const stayBookings = await Booking.find({
+      listingId: { $in: stayListingIds },
+    }).lean();
+    const officeBookings = await CoofficeBooking.find({
+      officeId: { $in: officeSpaceIds },
+    }).lean();
+    const rentalBookings = await Rental.find({
+      rentalId: { $in: carRentalIds },
+    }).lean();
+    const serviceBookings = await ServiceBooking.find({
+      serviceId: { $in: serviceIds },
+    }).lean();
+
+    const userIds = [
+      ...stayBookings.map((booking) => booking.userId),
+      ...officeBookings.map((booking) => booking.userId),
+      ...rentalBookings.map((booking) => booking.userId),
+      ...serviceBookings.map((booking) => booking.userId),
+    ];
+
+    const uniqueUserIds = [...new Set(userIds)];
+
+    const users = await User.find({ _id: { $in: uniqueUserIds } }).lean();
+
+    const userMap = users.reduce((acc, user) => {
+      acc[user._id] = user;
+      return acc;
+    }, {});
+
+    const allBookings = [
+      ...stayBookings.map((booking) => ({
+        ...booking,
+        type: "stay",
+        user: userMap[booking.userId],
+      })),
+      ...officeBookings.map((booking) => ({
+        ...booking,
+        type: "office",
+        user: userMap[booking.userId],
+      })),
+      ...rentalBookings.map((booking) => ({
+        ...booking,
+        type: "rental",
+        user: userMap[booking.userId],
+      })),
+      ...serviceBookings.map((booking) => ({
+        ...booking,
+        type: "service",
+        user: userMap[booking.userId],
+      })),
+    ];
+
+    res.status(200).json(allBookings);
+  } catch (error) {
+    console.error("Error fetching bookings:", error);
+    res.status(500).json({ error: "Failed to fetch bookings" });
+  }
+};
 
 const getUpcomingBookings = async (req, res) => {
   try {
@@ -1208,6 +1654,90 @@ const getUpcomingBookings = async (req, res) => {
         CarRental.find({ owner: userId }).lean(),
         Service.find({ owner: userId }).lean(),
         OfficeSpace.find({ owner: userId }).lean(),
+      ]
+    );
+
+    // Extract listing IDs
+    const stayListingIds = stayListings.map((listing) => listing._id);
+    const rentalIds = rentals.map((rental) => rental._id);
+    const serviceIds = services.map((service) => service._id);
+    const coofficeSpaceIds = coofficeSpaces.map((space) => space._id);
+
+    // Fetch confirmed bookings from all schemas
+    const [stayBookings, rentalBookings, serviceBookings, coofficeBookings] =
+      await Promise.all([
+        Booking.find({
+          listingId: { $in: stayListingIds },
+          status: "confirmed",
+        }).lean(),
+        Rental.find({
+          rentalId: { $in: rentalIds },
+          status: "confirmed",
+        }).lean(),
+        ServiceBooking.find({
+          serviceId: { $in: serviceIds },
+          status: "confirmed",
+        }).lean(),
+        CoofficeBooking.find({
+          officeId: { $in: coofficeSpaceIds },
+          status: "confirmed",
+        }).lean(),
+      ]);
+
+    // Combine all upcoming bookings
+    const upcomingBookings = [
+      ...stayBookings,
+      ...rentalBookings,
+      ...serviceBookings,
+      ...coofficeBookings,
+    ];
+
+    // Respond with the total number of upcoming bookings
+    res.status(200).json({ totalUpcomingBookings: upcomingBookings.length });
+  } catch (error) {
+    console.error("Error fetching upcoming bookings:", error);
+    res.status(500).json({ error: "Failed to fetch upcoming bookings" });
+  }
+};
+
+const activeUsers = async (req, res) => {
+  try {
+    const activeUsers = await User.countDocuments({
+      account_type: { $in: ["user", "partner", "user_partner"] },
+      status: "active",
+    });
+
+    res.status(200).json({ totalActiveUsers: activeUsers });
+  } catch (error) {
+    console.error("Error fetching active users:", error);
+    res.status(500).json({ error: "Failed to fetch active users" });
+  }
+};
+
+const allUsers = async (req, res) => {
+  try {
+    const activeUsers = await User.countDocuments({
+      account_type: { $in: ["user", "partner", "user_partner"] },
+    });
+
+    res.status(200).json({ totalActiveUsers: activeUsers });
+  } catch (error) {
+    console.error("Error fetching active users:", error);
+    res.status(500).json({ error: "Failed to fetch active users" });
+  }
+};
+
+const getUpcomingBookingsGeneral = async (req, res) => {
+  try {
+    const status = "confirmed";
+    const today = new Date();
+
+    const [stayListings, rentals, services, coofficeSpaces] = await Promise.all(
+      [
+        StayListing.find().lean(),
+        CarRental.find().lean(),
+        Service.find().lean(),
+        OfficeSpace.find().lean(),
       ]
     );
 
@@ -1309,6 +1839,62 @@ const getEndedBookings = async (req, res) => {
     res.status(500).json({ error: "Failed to fetch ended bookings" });
   }
 };
+const getEndedBookingsGeneral = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Fetch all listings owned by the user
+    const [stayListings, rentals, services, coofficeSpaces] = await Promise.all(
+      [
+        StayListing.find().lean(),
+        CarRental.find().lean(),
+        Service.find().lean(),
+        OfficeSpace.find().lean(),
+      ]
+    );
+
+    // Extract listing IDs
+    const stayListingIds = stayListings.map((listing) => listing._id);
+    const rentalIds = rentals.map((rental) => rental._id);
+    const serviceIds = services.map((service) => service._id);
+    const coofficeSpaceIds = coofficeSpaces.map((space) => space._id);
+
+    // Fetch bookings with a status of "ended" from all schemas
+    const [stayBookings, rentalBookings, serviceBookings, coofficeBookings] =
+      await Promise.all([
+        Booking.find({
+          listingId: { $in: stayListingIds },
+          status: "ended",
+        }).lean(),
+        Rental.find({
+          rentalId: { $in: rentalIds },
+          status: "ended",
+        }).lean(),
+        ServiceBooking.find({
+          serviceId: { $in: serviceIds },
+          status: "ended",
+        }).lean(),
+        CoofficeBooking.find({
+          officeId: { $in: coofficeSpaceIds },
+          status: "ended",
+        }).lean(),
+      ]);
+
+    // Combine all ended bookings
+    const endedBookings = [
+      ...stayBookings,
+      ...rentalBookings,
+      ...serviceBookings,
+      ...coofficeBookings,
+    ];
+
+    // Respond with the total number of ended bookings
+    res.status(200).json({ totalEndedBookings: endedBookings.length });
+  } catch (error) {
+    console.error("Error fetching ended bookings:", error);
+    res.status(500).json({ error: "Failed to fetch ended bookings" });
+  }
+};
 
 const getAllInactiveListings = async (req, res) => {
   try {
@@ -1347,6 +1933,36 @@ const getAllInactiveListings = async (req, res) => {
     res.status(500).json({ error: "Failed to fetch inactive listings" });
   }
 };
+const getAllInactiveListingsGeneral = async (req, res) => {
+  try {
+    const stayListings = await StayListing.find({
+      status: "inactive",
+    }).lean();
+    const services = await Service.find({
+      status: "inactive",
+    }).lean();
+    const officeSpaces = await OfficeSpace.find({
+      status: "inactive",
+    }).lean();
+    const carRentals = await CarRental.find({
+      status: "inactive",
+    }).lean();
+
+    // Combine all inactive listings
+    const inactiveListings = [
+      ...stayListings,
+      ...services,
+      ...officeSpaces,
+      ...carRentals,
+    ];
+
+    // Respond with the total number of inactive listings
+    res.status(200).json({ totalInactiveListings: inactiveListings.length });
+  } catch (error) {
+    console.error("Error fetching inactive listings:", error);
+    res.status(500).json({ error: "Failed to fetch inactive listings" });
+  }
+};
 
 const getallActiveListings = async (req, res) => {
   try {
@@ -1367,6 +1983,36 @@ const getallActiveListings = async (req, res) => {
     }).lean();
     const carRentals = await CarRental.find({
       owner: userId,
+      status: "active",
+    }).lean();
+
+    // Combine all active listings
+    const activeListings = [
+      ...stayListings,
+      ...services,
+      ...officeSpaces,
+      ...carRentals,
+    ];
+
+    // Respond with the total number of active listings
+    res.status(200).json({ totalActiveListings: activeListings.length });
+  } catch (error) {
+    console.error("Error fetching active listings:", error);
+    res.status(500).json({ error: "Failed to fetch active listings" });
+  }
+};
+const getallActiveListingsGeneral = async (req, res) => {
+  try {
+    const stayListings = await StayListing.find({
+      status: "active",
+    }).lean();
+    const services = await Service.find({
+      status: "active",
+    }).lean();
+    const officeSpaces = await OfficeSpace.find({
+      status: "active",
+    }).lean();
+    const carRentals = await CarRental.find({
       status: "active",
     }).lean();
 
@@ -1963,13 +2609,12 @@ const getListings = async (req, res) => {
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, "/uploads"); // Use the absolute path where the disk is mounted
+    cb(null, "uploads/");
   },
   filename: function (req, file, cb) {
     cb(null, Date.now() + path.extname(file.originalname));
   },
 });
-
 const upload = multer({ storage: storage });
 
 const createRental = async (req, res) => {
@@ -2274,7 +2919,7 @@ const createOfficeListing = async (req, res) => {
   }
 };
 
- const verifyAccount = async (req, res) => {
+const verifyAccount = async (req, res) => {
   try {
     const { email, code } = req.body;
 
@@ -2303,7 +2948,9 @@ const createOfficeListing = async (req, res) => {
     return res.status(200).json({ message: "Account verified successfully" });
   } catch (error) {
     console.error("Error during account verification:", error);
-    return res.status(500).json({ error: "Server error, please try again later" });
+    return res
+      .status(500)
+      .json({ error: "Server error, please try again later" });
   }
 };
 const resetPassword = async (req, res) => {
@@ -2326,7 +2973,7 @@ const resetPassword = async (req, res) => {
     }
 
     // Generate new random password (12 characters)
-    const newPassword = crypto.randomBytes(6).toString('hex');
+    const newPassword = crypto.randomBytes(6).toString("hex");
 
     // Hash the new password
     const hashedPassword = await hashPassword(newPassword);
@@ -2599,7 +3246,8 @@ const loginUser = async (req, res) => {
     // Check if the user is verified
     if (!user.is_verified) {
       return res.json({
-        error: "Please verify your email. Check your inbox for the verification code.",
+        error:
+          "Please verify your email. Check your inbox for the verification code.",
       });
     }
 
@@ -2612,28 +3260,29 @@ const loginUser = async (req, res) => {
     }
 
     // Update account_type if it is 'partner'
-    if (user.account_type === 'partner') {
-      user.account_type = 'user_partner';
+    if (user.account_type === "partner") {
+      user.account_type = "user_partner";
       await user.save(); // Save the updated account_type
     }
 
     // Sign the JWT token and add 'interface': 'user' to the payload
     jwt.sign(
-      { 
-        email: user.email, 
-        id: user._id, 
+      {
+        email: user.email,
+        id: user._id,
         first_name: user.first_name,
-        interface: 'user'  // Add 'interface': 'user' to the JWT payload
+        interface: "user", // Add 'interface': 'user' to the JWT payload
       },
       process.env.JWT_SECRET,
+      
       {},
       async (err, token) => {
         if (err) throw err;
-        
+
         // Send login notification email
         const loginTime = new Date().toLocaleString();
         await sendLoginEmail(user.email, loginTime);
-        
+
         res.cookie("token", token).json(user);
       }
     );
@@ -2660,7 +3309,8 @@ const loginPartner = async (req, res) => {
     // Check if the user is verified
     if (!user.is_verified) {
       return res.json({
-        error: "Please verify your email. Check your inbox for the verification code.",
+        error:
+          "Please verify your email. Check your inbox for the verification code.",
       });
     }
 
@@ -2673,24 +3323,24 @@ const loginPartner = async (req, res) => {
     }
 
     // Update account_type if necessary
-    if (user.account_type === 'user') {
-      user.account_type = 'user_partner';
+    if (user.account_type === "user") {
+      user.account_type = "user_partner";
       await user.save(); // Save the updated account_type to the database
     }
 
     // Sign the JWT token and add 'interface': 'partner' to the payload
     jwt.sign(
-      { 
-        email: user.email, 
-        id: user._id, 
+      {
+        email: user.email,
+        id: user._id,
         first_name: user.first_name,
-        interface: 'partner'  // Add 'interface': 'partner' to the JWT payload
+        interface: "partner", // Add 'interface': 'partner' to the JWT payload
       },
       process.env.JWT_SECRET,
       {},
       async (err, token) => {
         if (err) throw err;
-        
+
         // Send login notification email
         const loginTime = new Date().toLocaleString();
         try {
@@ -2699,7 +3349,71 @@ const loginPartner = async (req, res) => {
           console.error("Error sending login notification email:", emailError);
           // Continue with login process even if email fails
         }
-        
+
+        res.cookie("token", token).json(user);
+      }
+    );
+  } catch (error) {
+    console.error("Error during login:", error);
+    return res.json({
+      error: "Server error, please try again later",
+    });
+  }
+};
+const loginAdmin = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // Find the user by email
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.json({
+        error: "User not found",
+      });
+    }
+
+    // Check if the user is verified
+    if (!user.is_verified) {
+      return res.json({
+        error:
+          "Please verify your email. Check your inbox for the verification code.",
+      });
+    }
+
+    // Compare the password
+    const isMatch = await comparePassword(password, user.password);
+    if (!isMatch) {
+      return res.json({
+        error: "Invalid credentials",
+      });
+    }
+
+    // Update account_type if necessary
+    if (user.account_type === "user") {
+      user.account_type = "user_partner";
+      await user.save(); // Save the updated account_type to the database
+    }
+
+    // Sign the JWT token and add 'interface': 'partner' to the payload
+    jwt.sign(
+      {
+        email: user.email,
+        id: user._id,
+        first_name: user.first_name,
+        interface: "admin", // Add 'interface': 'partner' to the JWT payload
+      },
+      process.env.JWT_SECRET,
+      {},
+      async (err, token) => {
+        if (err) throw err;
+
+        const loginTime = new Date().toLocaleString();
+        try {
+          // await sendLoginEmail(user.email, loginTime);
+        } catch (emailError) {
+          console.error("Error sending login notification email:", emailError);
+        }
+
         res.cookie("token", token).json(user);
       }
     );
@@ -2830,7 +3544,7 @@ const getFullProfile = async (req, res) => {
         date_joined: user.date_joined,
         status: user.status,
         role: user.role,
-        interface: decoded.interface
+        interface: decoded.interface,
       };
 
       res.json(userProfile);
@@ -2865,7 +3579,6 @@ const updatePartnerDetails = async (req, res) => {
 
         await user.save();
 
-        // Return updated user profile
         res.json({
           email: user.email,
           account_type: user.account_type,
@@ -2874,7 +3587,7 @@ const updatePartnerDetails = async (req, res) => {
           phone_number: user.phone_number,
           contact_email: user.contact_email,
           address: user.address,
-          interface: 'partner'
+          interface: "partner",
         });
       } catch (error) {
         res.json({ error: "Internal server error" });
@@ -2884,6 +3597,7 @@ const updatePartnerDetails = async (req, res) => {
     res.json({ error: "No token provided" });
   }
 };
+
 const updateUserDetails = async (req, res) => {
   const { token } = req.cookies;
 
@@ -2913,7 +3627,7 @@ const updateUserDetails = async (req, res) => {
           first_name: user.first_name,
           last_name: user.last_name,
           phone_number: user.phone_number,
-          interface: 'user'
+          interface: "user",
         });
       } catch (error) {
         res.json({ error: "Internal server error" });
@@ -2925,7 +3639,7 @@ const updateUserDetails = async (req, res) => {
 };
 
 const updatePayment = async (req, res) => {
-  const { token } = req.cookies; // Assuming the token is stored in cookies
+  const { token } = req.cookies;
 
   if (token) {
     jwt.verify(token, process.env.JWT_SECRET, {}, async (err, decoded) => {
@@ -2933,17 +3647,14 @@ const updatePayment = async (req, res) => {
         return res.json({ error: "Invalid token" });
       }
       try {
-        // Find the user using the decoded email
         const user = await User.findOne({ email: decoded.email });
         if (!user) {
           return res.json({ error: "User not found" });
         }
 
-        // Find the payment method associated with the user
         let paymentMethod = await PaymentMethod.findOne({ user: user._id });
 
         if (!paymentMethod) {
-          // Create a new payment method if it does not exist
           paymentMethod = new PaymentMethod({
             user: user._id,
             name_on_card: req.body.name_on_card || "",
@@ -2953,7 +3664,6 @@ const updatePayment = async (req, res) => {
             cvv: req.body.cvv || "",
           });
         } else {
-          // Update payment method if it exists
           paymentMethod.name_on_card =
             req.body.name_on_card || paymentMethod.name_on_card;
           paymentMethod.card_number =
@@ -2967,13 +3677,11 @@ const updatePayment = async (req, res) => {
 
         await paymentMethod.save();
 
-        // Return updated payment method
         res.json({
           message: "Payment method updated successfully",
           payment_method: paymentMethod,
         });
       } catch (error) {
-        // Send detailed error message from MongoDB
         console.error("Update payment error:", error);
         res
           .status(400)
@@ -2995,7 +3703,6 @@ const getPaymentMethod = async (req, res) => {
         return res.status(401).json({ error: "Invalid token" });
       }
       try {
-        // Find user
         const user = await User.findOne({ email: decoded.email });
         if (!user) {
           console.error("User not found:", decoded.email);
@@ -3029,7 +3736,7 @@ const getPaymentMethod = async (req, res) => {
   }
 };
 
- const createPartner = async (req, res) => {
+const createPartner = async (req, res) => {
   try {
     // Extract user details from request body
     const { email, firstName, lastName, phoneNumber, password } = req.body;
@@ -3136,5 +3843,23 @@ module.exports = {
   loginPartner,
   verifyAccount,
   resetPassword,
+  loginAdmin,
+  getUpcomingBookingsGeneral,
+  activeUsers,
+  getallActiveListingsGeneral,
+  getAllInactiveListingsGeneral,
+  getAllListingsGeneral,
+  getEndedBookingsGeneral,
+  getAllBookingsGeneral,
+  allUsers,
+  getUsers,
+  updateUserStatus,
+  revenue,
+  bookingStatus,
+  bookingsOverTime,
+  revenueByListing,
+  userAnalytics,
+  usersJoiningOverTime,
+  bookingData,
   upload,
 };

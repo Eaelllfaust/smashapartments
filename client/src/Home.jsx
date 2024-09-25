@@ -1,93 +1,11 @@
 import React, { useEffect, useState, useRef } from "react";
-import {  useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { Link } from "react-router-dom";
 import axios from "axios";
-import { toast } from 'react-toastify'; // Import React Toastify
-const airports = [
-  {
-    id: 1,
-    name: "Nnamdi Azikiwe International Airport",
-    code: "ABV",
-    city: "Abuja",
-  },
-  {
-    id: 2,
-    name: "Murtala Muhammed International Airport",
-    code: "LOS",
-    city: "Lagos",
-  },
-  {
-    id: 3,
-    name: "Port Harcourt International Airport",
-    code: "PHC",
-    city: "Port Harcourt",
-  },
-  {
-    id: 4,
-    name: "Mallam Aminu Kano International Airport",
-    code: "KAN",
-    city: "Kano",
-  },
-  {
-    id: 5,
-    name: "Akanu Ibiam International Airport",
-    code: "ENU",
-    city: "Enugu",
-  },
-  {
-    id: 6,
-    name: "Margaret Ekpo International Airport",
-    code: "CBQ",
-    city: "Calabar",
-  },
-  {
-    id: 7,
-    name: "Sadiq Abubakar III International Airport",
-    code: "SKO",
-    city: "Sokoto",
-  },
-  {
-    id: 8,
-    name: "Maiduguri International Airport",
-    code: "MIU",
-    city: "Maiduguri",
-  },
-  { id: 9, name: "Kaduna Airport", code: "KAD", city: "Kaduna" },
-  { id: 10, name: "Ilorin International Airport", code: "ILR", city: "Ilorin" },
-  { id: 11, name: "Akure Airport", code: "AKR", city: "Akure" },
-  {
-    id: 12,
-    name: "Sam Mbakwe International Cargo Airport",
-    code: "QOW",
-    city: "Owerri",
-  },
-  { id: 13, name: "Asaba International Airport", code: "ABB", city: "Asaba" },
-  { id: 14, name: "Benin Airport", code: "BNI", city: "Benin City" },
-  { id: 15, name: "Yakubu Gowon Airport", code: "JOS", city: "Jos" },
-  { id: 16, name: "Yola Airport", code: "YOL", city: "Yola" },
-  { id: 17, name: "Kebbi Airport", code: "BKO", city: "Birnin Kebbi" },
-  {
-    id: 18,
-    name: "Sir Abubakar Tafawa Balewa Airport",
-    code: "BCU",
-    city: "Bauchi",
-  },
-  { id: 19, name: "Ibadan Airport", code: "IBA", city: "Ibadan" },
-  { id: 20, name: "Makurdi Airport", code: "MDI", city: "Makurdi" },
-  { id: 21, name: "Warri Airport", code: "QRW", city: "Warri" },
-  { id: 22, name: "Zaria Airport", code: "ZAR", city: "Zaria" },
-  { id: 23, name: "Minna Airport", code: "MXJ", city: "Minna" },
-  { id: 24, name: "Dutse International Airport", code: "DUT", city: "Dutse" },
-  {
-    id: 25,
-    name: "Gombe Lawanti International Airport",
-    code: "GMO",
-    city: "Gombe",
-  },
-  { id: 26, name: "Jalingo Airport", code: "JAL", city: "Jalingo" },
-];
+import AirportPickups from "./AiportPickups";
+import { toast } from "react-toastify"; // Import React Toastify
 
 export default function Home() {
   const navigate = useNavigate();
@@ -134,35 +52,7 @@ export default function Home() {
   const latitude = params.get("latitude");
   const longitude = params.get("longitude");
 
-  const handleAirportInputChange = (e) => {
-    const value = e.target.value;
-    setAirportQuery(value);
 
-    if (value.length > 1) {
-      const filteredAirports = airports
-        .filter(
-          (airport) =>
-            airport.name.toLowerCase().includes(value.toLowerCase()) ||
-            airport.code.toLowerCase().includes(value.toLowerCase()) ||
-            airport.city.toLowerCase().includes(value.toLowerCase())
-        )
-        .slice(0, 5); // Limit to 5 suggestions
-      setAirportSuggestions(filteredAirports);
-      setShowAirportPopover(true);
-    } else {
-      setAirportSuggestions([]);
-      setShowAirportPopover(false);
-    }
-  };
-  const handleAirportSuggestionClick = (airport) => {
-    setAirportQuery(`${airport.name} (${airport.code}), ${airport.city}`);
-    setAirportSuggestions([]);
-    setShowAirportPopover(false);
-  };
-
-  const handleAirportSearch = () => {
-    navigate(`/pickups?airport=${encodeURIComponent(airportQuery)}`);
-  };
   const handleInputChange = async (e) => {
     const value = e.target.value;
     setQuery(value);
@@ -288,7 +178,7 @@ export default function Home() {
     setQuery(params.get("location") || "");
     setDateRange([
       params.get("checkIn") ? new Date(params.get("checkIn")) : null,
-      params.get("checkOut") ? new Date(params.get("checkOut")) : null
+      params.get("checkOut") ? new Date(params.get("checkOut")) : null,
     ]);
     const totalPeople = Number(params.get("people") || 0);
     setAdults(Math.floor(totalPeople / 2));
@@ -298,7 +188,7 @@ export default function Home() {
 
     fetchListings();
   }, [location.search]);
-  
+
   const fetchListings = async () => {
     setLoading(true);
     try {
@@ -309,7 +199,6 @@ export default function Home() {
       const response = await axios.get("/getlistings", { params });
       setListings(response.data);
       setHasMore(response.data.length === 5);
-    
     } catch (error) {
       console.error("Error fetching listings:", error);
       toast.error("Failed to fetch properties");
@@ -317,7 +206,6 @@ export default function Home() {
       setLoading(false);
     }
   };
-
 
   return (
     <>
@@ -330,10 +218,7 @@ export default function Home() {
             <Link to="/stays?propertyType=apartment" className="menu_sa ">
               <img src="assets/heroicons_home.svg" alt="" /> Apartments
             </Link>
-            <Link to="/stays" className="menu_sa ">
-              <img src="assets/emojione-monotone_houses.svg" alt="" />{" "}
-              Properties
-            </Link>
+
             <Link to="/cooffice" className="menu_sa ">
               <img src="assets/ph_building-office.svg" alt="" /> Co-office space
             </Link>
@@ -370,7 +255,7 @@ export default function Home() {
             <img src="/assets/bed-regular-84.png" alt="" />
             <input
               type="text"
-              placeholder="Where are you going?"
+              placeholder="Location"
               value={query}
               onChange={handleInputChange}
               className="location-input"
@@ -496,7 +381,9 @@ export default function Home() {
               <img src="assets/properties (3).png" alt="" />
               <h3>Villas</h3>
               <p>Find villas available in your location</p>
-              <Link to="/stays?propertyType=villa" className="button b2 b3">Find yours</Link>
+              <Link to="/stays?propertyType=villa" className="button b2 b3">
+                Find yours
+              </Link>
             </div>
           </div>
           <button className="scroll-button right-button">&gt;</button>
@@ -509,13 +396,12 @@ export default function Home() {
           <h2>Discover listings</h2>
         </div>
         <div className="row_main_container padding_item">
-        <div className="listings_list">
+          <div className="listings_list">
             {listings.map((listing) => (
               <div className="list_node" key={listing._id}>
-                
                 <div className="list_1">
                   <img
-                    src={`https://smashapartments-kyto.onrender.com/uploads/${listing.images[0]?.media_name}`}
+                    src={`http://smashapartments.com/uploads/${listing.images[0]?.media_name}`}
                     alt={listing.property_name}
                   />
                 </div>
@@ -562,9 +448,7 @@ export default function Home() {
                     </div>
                     <div>
                       <div className="o33">
-                        <div>
-                          {listing.weekly_discount || "0"}% discounted
-                        </div>
+                        <div>{listing.weekly_discount || "0"}% discounted</div>
                         <div>Daily rate</div>
                       </div>
                       <div className="amount_main">
@@ -585,52 +469,15 @@ export default function Home() {
                 </div>
               </div>
             ))}
-    
-            <Link to="/stays"  className="button_6 b3 b2 syw ">See more</Link>
-    
-          </div>
-          </div>
-          </section>
 
-
-      <section className="sa_3">
-        <img src="assets/flightnew.jpg" alt="" />
-        <div className="shade_flight">
-          <div className="shade_4">
-            <h1>
-              Airport <span className="swit">Pickups</span>
-            </h1>
-            <br />
-            <p>Discover the best deals for your next travel in Nigeria.</p>
-          </div>
-          <div className="sa_search_max">
-            <div className="search_item_max new_max" ref={airportPopoverRef}>
-              <input
-                type="text"
-                placeholder="Enter airport name, code, or city"
-                value={airportQuery}
-                onChange={handleAirportInputChange}
-              />
-              {showAirportPopover && airportSuggestions.length > 0 && (
-                <div className="popover">
-                  {airportSuggestions.map((airport) => (
-                    <div
-                      key={airport.id}
-                      className="popover-item"
-                      onClick={() => handleAirportSuggestionClick(airport)}
-                    >
-                      {airport.name} ({airport.code}), {airport.city}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            <div className="button" onClick={handleAirportSearch}>
-              Search
-            </div>
+            <Link to="/stays" className="button_6 b3 b2 syw ">
+              See more
+            </Link>
           </div>
         </div>
       </section>
+
+<AirportPickups/>
       <br />
       <section className="sa_3">
         <img src="assets/stays.png" alt="" />
@@ -639,7 +486,6 @@ export default function Home() {
             <h1>
               Stays, <span className="swit">Properties</span>
             </h1>
-            <br />
             <p>Discover the best deals for your next travel.</p>
           </div>
           <div className="sa_search_max">
@@ -647,7 +493,7 @@ export default function Home() {
               <img src="/assets/bed-regular-84.png" alt="" />
               <input
                 type="text"
-                placeholder="Where are you going?"
+                placeholder="Location"
                 value={query}
                 onChange={handleInputChange}
                 className="location-input"

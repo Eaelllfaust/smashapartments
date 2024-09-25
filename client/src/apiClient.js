@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const apiClient = axios.create({
-  baseURL: `https://smashapartments-kyto.onrender.com`, // Dynamic base URL
+  baseURL: `https://smashapartments.com`, // Dynamic base URL
   headers: {
     'Content-Type': 'application/json',
   },

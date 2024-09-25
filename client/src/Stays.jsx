@@ -443,7 +443,7 @@ export default function Stays() {
             <img src="/assets/bed-regular-84.png" alt="" />
             <input
               type="text"
-              placeholder="Where are you going?"
+              placeholder="Location"
               value={query}
               onChange={handleInputChange}
               className="location-input"
@@ -537,7 +537,7 @@ export default function Stays() {
                 
                 <div className="list_1">
                   <img
-                    src={`https://smashapartments-kyto.onrender.com/uploads/${listing.images[0]?.media_name}`}
+                    src={`http://smashapartments.com/uploads/${listing.images[0]?.media_name}`}
                     alt={listing.property_name}
                   />
                 </div>

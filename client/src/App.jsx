@@ -10,7 +10,7 @@ import Footer from "./components/Footer";
 import Home from "./Home";
 import ListProperty from "./ListProperty";
 import CreateAccount from "./CreateAccount";
-import Signin from "./Signin";
+import Signin from "./signin";
 import PartnerDetails from "./PartnerDetails";
 import PartnerPassword from "./PartnerPassword";
 import Stays from "./Stays";
@@ -89,11 +89,12 @@ import ReserveRental from "./ReserveRental";
 import About from "./About";
 import Faq from "./Faq";
 import Preferences from "./user/Preferences";
-import SigninPartner from "./SigninPartner";
+import SigninPartner from "./Signinpartner";
 import Authme from "./Authme";
 import Recovery from "./Recovery";
+import SigninAdmin from "./SiginAdmin";
 
-axios.defaults.baseURL = "https://smashapartments-kyto.onrender.com/";
+axios.defaults.baseURL = "https://smashapartments.com/";
 axios.defaults.withCredentials = true;
 
 function App() {
@@ -110,6 +111,7 @@ function App() {
         <Route path="/signin/recovery" element={<Recovery />} />
         <Route path="/signinpartner/recovery" element={<Recovery />} />
         <Route path="/signinpartner" element={< SigninPartner/>} />
+        <Route path="/signinadmin" element={< SigninAdmin/>} />
         <Route path="/partnerdetails" element={<PartnerDetails />} />
         <Route path="/partnerpassword" element={<PartnerPassword />} />
         <Route path="/stays" element={<Stays />} />

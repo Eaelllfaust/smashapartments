@@ -175,7 +175,7 @@ export default function ReserveRental() {
               <div className="list_1">
                 <img
                   src={rental.images?.[0]?.url ? 
-                       `https://smashapartments-kyto.onrender.com/uploads/${rental.images[0].media_name}` : 
+                       `https://smashapartments.com/uploads/${rental.images[0].media_name}` : 
                        '/assets/bg (3).png'}
                   alt={rental.carNameModel || 'Car Rental Image'}
                 />

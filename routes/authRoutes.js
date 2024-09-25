@@ -60,17 +60,33 @@ const {
   loginPartner,
   verifyAccount,
   resetPassword,
+  loginAdmin,
+  getUpcomingBookingsGeneral,
+  activeUsers,
+  getallActiveListingsGeneral,
+  getAllInactiveListingsGeneral,
+  getAllListingsGeneral,
+  getEndedBookingsGeneral,
+  getAllBookingsGeneral,
+  allUsers,
+  getUsers,
+  updateUserStatus,
+  totalEarning,
+  revenue,
+  bookingStatus,
+  bookingsOverTime,
+  revenueByListing,
+  userAnalytics,
+  usersJoiningOverTime,
+  bookingData,
 } = require("../controllers/authController");
 
-//middleware
-const corsOptions = {
-  origin: 'https://smashapartments-kyto.onrender.com',
-  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-  allowedHeaders: 'Content-Type, Authorization',
-};
-
-router.use(cors(corsOptions));
-
+router.use(
+  cors({
+    credentials: true,
+    origin: "https://smashapartments.com",
+  })
+);
 
 router.get("/", test);
 router.post("/register", registerUser);
@@ -78,8 +94,11 @@ router.post("/login", loginUser);
 router.post("/resetpassword", resetPassword);
 router.post("/verifyaccount", verifyAccount);
 router.post("/loginpartner", loginPartner);
+router.post("/loginadmin", loginAdmin);
 router.get("/profile", getFullProfile);
+router.get("/users", getUsers);
 router.post("/logout", logoutUser);
+router.post("/updateuserstatus", updateUserStatus);
 router.put("/updateuser", updateUserDetails);
 router.put("/updatebookingstatus", updatebookingstatus);
 router.put("/updatepayoutsettings", updatePayoutSettings);
@@ -87,7 +106,18 @@ router.put("/updatepartnerdetails", updatePartnerDetails);
 router.put("/updatepayment", updatePayment);
 router.get("/getlistings", getListings);
 router.get("/getpickups", getPickups);
+router.get("/activeusers", activeUsers);
+router.get("/allusers", allUsers);
+router.get("/revenue", revenue);
+router.get("/bookingdata", bookingData);
+router.get("/useranalytics", userAnalytics);
+router.get("/userjoiningovertime", usersJoiningOverTime);
+router.get("/bookingstatus", bookingStatus);
+router.get("/bookingsovertime", bookingsOverTime);
+router.get("/revenuebylisting", revenueByListing);
+// router.get("/totalrevenue", totalEarning);
 router.get("/getallbookings/:userId", getAllBookings);
+router.get("/getallbookingsgeneral", getAllBookingsGeneral);
 router.get("/getcooffices", getCooffices);
 router.get("/getrentals", getRentals);
 router.get("/getpayoutsettings", getPayoutSettings);
@@ -96,7 +126,9 @@ router.post("/complaints", userComplaint);
 router.get("/preferences", getUserPreferences);
 router.post("/updatepreferences", updateUserPreferences);
 router.get("/listings/all/:ownerId", getAllListings);
+router.get("/listings/general", getAllListingsGeneral);
 router.get("/listings/inactive/:userId", getAllInactiveListings);
+router.get("/listings/inactivegeneral", getAllInactiveListingsGeneral);
 router.post("/likeproperty", likeProperty);
 router.post("/updatestatus", updateStatus);
 router.post("/cancelbooking/:bookingId", cancelBooking);
@@ -111,10 +143,13 @@ router.get("/getlistingdata/:id", getListingData);
 router.get("/getrentaldetails/:id", getRentalDetails);
 router.get("/getpickupdata/:id", getPickupData);
 router.get("/activelistings/:userId", getallActiveListings);
+router.get("/activelistingsgeneral", getallActiveListingsGeneral);
 router.get("/allinactivelistings/:userId", getAllInactiveListings);
 router.get("/earnings/:userId", getTotalEarnings);
 router.get("/upcomingbookings/:userId", getUpcomingBookings);
+router.get("/upcomingbookingsgeneral/", getUpcomingBookingsGeneral);
 router.get("/endedbookings/:userId", getEndedBookings);
+router.get("/endedbookingsgeneral", getEndedBookingsGeneral);
 router.get("/getcoofficedata/:id", getCoOfficeData);
 router.get("/userbookings/:userId", getUserBookings);
 router.get("/getcurrentpickups/:userId", getCurrentPickups);

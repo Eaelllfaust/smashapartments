@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-toastify'; // Import React Toastify
@@ -21,6 +21,35 @@ export default function Rentals() {
   const params = new URLSearchParams(location.search);
   const locationParam = params.get('location');
   const carTypeParam = params.get('carType');
+  const [searchLocationSuggestions, setSearchLocationSuggestions] = useState([]);
+  const [showLocationPopover, setShowLocationPopover] = useState(false);
+  const locationPopoverRef = useRef(null);
+
+  const handleLocationInputChange = async (e) => {
+    const value = e.target.value;
+    setSearchLocation(value);
+
+    if (value.length > 2) {
+      try {
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${value}&addressdetails=1&limit=5`
+        );
+        const results = await response.json();
+        setSearchLocationSuggestions(results);
+        setShowLocationPopover(true);
+      } catch (error) {
+        console.error("Error fetching location suggestions:", error);
+      }
+    } else {
+      setSearchLocationSuggestions([]);
+      setShowLocationPopover(false);
+    }
+  };
+  const handleLocationSuggestionClick = (suggestion) => {
+    setSearchLocation(suggestion.display_name);
+    setSearchLocationSuggestions([]);
+    setShowLocationPopover(false);
+  };
 
   useEffect(() => {
     const fetchRentals = async () => {
@@ -85,7 +114,7 @@ export default function Rentals() {
   };
 
   const handleSearchSubmit = () => {
-    
+
     toast("Searching...")
     const queryParams = new URLSearchParams();
     if (searchLocation) queryParams.append('location', searchLocation);
@@ -126,7 +155,22 @@ export default function Rentals() {
       alert('Please enter a location to show on the map.');
     }
   };
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        locationPopoverRef.current &&
+        !locationPopoverRef.current.contains(event.target)
+      ) {
+        setShowLocationPopover(false);
+      }
+    };
 
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
   return (
     <>
       <div className="shade_2 df">
@@ -246,52 +290,34 @@ export default function Rentals() {
         </div>
         <div className="col_2">
           <div className="sa_search_1 i98">
-            <div className="search_item">
-              <input
-                type="text"
-                placeholder="Location"
-                value={searchLocation}
-                onChange={(e) => setSearchLocation(e.target.value)}
-              />
-            </div>
-            <div className="search_item">
-              <select
-                className="dm9"
-                value={searchCarType}
-                onChange={(e) => setSearchCarType(e.target.value)}
-              >
-                <option value="">Car type</option>
-                <option value="sedan">Sedan</option>
-                <option value="suv">SUV</option>
-                <option value="hatchback">Hatchback</option>
-                <option value="convertible">Convertible</option>
-                <option value="coupe">Coupe</option>
-                <option value="minivan">Minivan</option>
-                <option value="pickup-truck">Pickup Truck</option>
-                <option value="station-wagon">Station Wagon</option>
-                <option value="sports-car">Sports Car</option>
-                <option value="luxury-car">Luxury Car</option>
-                <option value="electric-car">Electric Car</option>
-                <option value="hybrid-car">Hybrid Car</option>
-                <option value="crossover">Crossover</option>
-                <option value="diesel-car">Diesel Car</option>
-                <option value="compact-car">Compact Car</option>
-                <option value="roadster">Roadster</option>
-                <option value="van">Van</option>
-                <option value="microcar">Microcar</option>
-                <option value="limousine">Limousine</option>
-                <option value="muscle-car">Muscle Car</option>
-                <option value="supercar">Supercar</option>
-                <option value="classic-car">Classic Car</option>
-              </select>
-            </div>
+          <div className="search_item new_maxi" ref={locationPopoverRef}>
+            <input
+              type="text"
+              placeholder="Enter destination"
+              value={searchLocation}
+              onChange={handleLocationInputChange}
+            />
+            {showLocationPopover && searchLocationSuggestions.length > 0 && (
+              <div className="popover">
+                {searchLocationSuggestions.map((suggestion) => (
+                  <div
+                    key={suggestion.place_id}
+                    className="popover-item"
+                    onClick={() => handleLocationSuggestionClick(suggestion)}
+                  >
+                    {suggestion.display_name}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
             <div className="button b2 b3" onClick={handleSearchSubmit}>Search</div>
           </div>
           <div className="listings_list">
             {rentals.map((rental) => (
               <div className="list_node" key={rental._id}>
                 <div className="list_1">
-                  <img src={`https://smashapartments-kyto.onrender.com/uploads/${rental.images[0].media_name}` || "assets/bg (3).png"} alt={rental.carNameModel} />
+                  <img src={`http://smashapartments.com/uploads/${rental.images[0].media_name}` || "assets/bg (3).png"} alt={rental.carNameModel} />
                 </div>
                 <div className="list_2">
                   <div className="l22">

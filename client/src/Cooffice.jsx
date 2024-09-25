@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-toastify'; // Import React Toastify
@@ -15,6 +15,9 @@ export default function Cooffice() {
 
   // Search form state
   const [searchLocation, setSearchLocation] = useState('');
+  const [searchLocationSuggestions, setSearchLocationSuggestions] = useState([]);
+  const [showLocationPopover, setShowLocationPopover] = useState(false);
+  const locationPopoverRef = useRef(null);
   const [searchOfficeType, setSearchOfficeType] = useState('');
 
   const params = new URLSearchParams(location.search);
@@ -84,14 +87,6 @@ export default function Cooffice() {
     }));
   };
 
-  const handleSearchSubmit = () => {
-    toast("Searching...")
-    const queryParams = new URLSearchParams();
-    if (searchLocation) queryParams.append('location', searchLocation);
-    if (searchOfficeType) queryParams.append('officeType', searchOfficeType);
-
-    navigate(`/cooffice?${queryParams.toString()}`);
-  };
 
   const loadMore = async () => {
     if (!hasMore || loading) return;
@@ -126,10 +121,63 @@ export default function Cooffice() {
     }
   };
 
+  const handleLocationInputChange = async (e) => {
+    const value = e.target.value;
+    setSearchLocation(value);
+
+    if (value.length > 2) {
+      try {
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${value}&addressdetails=1&limit=5`
+        );
+        const results = await response.json();
+        setSearchLocationSuggestions(results);
+        setShowLocationPopover(true);
+      } catch (error) {
+        console.error("Error fetching location suggestions:", error);
+      }
+    } else {
+      setSearchLocationSuggestions([]);
+      setShowLocationPopover(false);
+    }
+  };
+  const handleLocationSuggestionClick = (suggestion) => {
+    setSearchLocation(suggestion.display_name);
+    setSearchLocationSuggestions([]);
+    setShowLocationPopover(false);
+  };
+
+  const handleSearchSubmit = () => {
+    toast("Searching...")
+    const queryParams = new URLSearchParams();
+    if (searchLocation) queryParams.append('location', searchLocation);
+    if (searchOfficeType) queryParams.append('officeType', searchOfficeType);
+
+    navigate(`/cooffice?${queryParams.toString()}`);
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        locationPopoverRef.current &&
+        !locationPopoverRef.current.contains(event.target)
+      ) {
+        setShowLocationPopover(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+
   return (
     <>
       <div className="shade_2 df">
-        <h1>Search for cooffice</h1>
+        <h1>Search for co-office</h1>
         <p>From budget hotels to luxury rooms and everything in between</p>
         <img src="assets/linear_bg.png" className="shade_bg" alt="" />
         <div className="shade_item">
@@ -301,16 +349,29 @@ export default function Cooffice() {
           </div>
         </div>
         <div className="col_2">
-          <div className="sa_search_1 i98">
-            <div className="search_item">
+        <div className="sa_search_1 i98">
+            <div className="search_item new_maxi" ref={locationPopoverRef}>
               <input
                 type="text"
                 placeholder="Location"
                 value={searchLocation}
-                onChange={(e) => setSearchLocation(e.target.value)}
+                onChange={handleLocationInputChange}
               />
+              {showLocationPopover && searchLocationSuggestions.length > 0 && (
+                <div className="popover">
+                  {searchLocationSuggestions.map((suggestion) => (
+                    <div
+                      key={suggestion.place_id}
+                      className="popover-item"
+                      onClick={() => handleLocationSuggestionClick(suggestion)}
+                    >
+                      {suggestion.display_name}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-            <div className="search_item">
+            <div className="search_item new_maxi">
               <select
                 className="dm9"
                 value={searchOfficeType}

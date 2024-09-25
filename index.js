@@ -8,7 +8,7 @@ const path = require('path');
 
 // CORS configuration
 const corsOptions = {
-  origin: "https://smashapartments-kyto.onrender.com", // Replace with your frontend URL
+  origin: "https://smashapartments.com", // Replace with your frontend URL
   methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
   allowedHeaders: "Content-Type, Authorization",
 };
