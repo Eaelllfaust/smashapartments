@@ -1982,16 +1982,16 @@ body {
   display: block !important;
   width: 100% !important;
 }
-.max_max select{
+.max_max select {
   text-align: left;
   font-family: "Montserrat", sans-serif !important;
   font-weight: 600;
   color: #5c5c5c;
   height: 60px;
-  margin-left:0px !important;
+  margin-left: 0px !important;
   border-radius: 10px;
 }
-.max_max .button{
+.max_max .button {
   max-width: 200px !important;
 }
 @media (max-width: 768px) {
@@ -2648,7 +2648,6 @@ input[type="range"] {
   opacity: 0;
 }
 
-
 .max_max .search_item_max {
   width: 100% !important;
   margin: 0px !important;
@@ -2660,7 +2659,7 @@ input[type="range"] {
 .max_max select {
   width: 100%;
 }
-button{
+button {
   font-family: Montserrat;
   font-weight: 600;
 }
@@ -2750,7 +2749,11 @@ button{
   position: relative !important;
 }
 .new_max {
-  width: 80%;
+  width: 41%;
+}
+.new_maxi {
+  min-width: 20rem !important;
+  width: 100%;
 }
 .value_decision i {
   padding: 5px;
@@ -2759,14 +2762,38 @@ button{
   margin: 10px;
   border-radius: 5px;
 }
-.padding_item{
-  padding:1rem;
+.padding_item {
+  padding: 1rem;
 }
-.syw{
- 
+.syw {
   margin: 1rem;
 }
 .sa_3 img {
   filter: brightness(60%);
   border-radius: 5px;
+}
+.take_me {
+  font-size:1.5rem;
+  color:limegreen;
+  margin-left:10px;
+  cursor:pointer;
+}
+.chart-area {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+  gap: 1.5rem;
+  padding: 1.5rem;
+}
+
+.chart-container {
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  padding: 1rem;
+}
+
+.chart-container h3 {
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
+  text-align: center;
 }
