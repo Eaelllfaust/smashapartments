@@ -391,7 +391,7 @@ export default function Cooffice() {
               <div className="list_node" key={cooffice._id}>
                 <div className="list_1">
                 <img
-                    src={`http://localhost:8000/uploads/${cooffice.images[0]?.media_name}`}
+                    src={`https:/smashapartments.com/uploads/${cooffice.images[0]?.media_name}`}
                   />
                 </div>
                 <div className="list_2">
