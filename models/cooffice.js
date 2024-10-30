@@ -105,6 +105,9 @@ const OfficeSpaceSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  security_levy: {
+    type: String,
+  },
   status: {
     type: String,
     default: 'active',

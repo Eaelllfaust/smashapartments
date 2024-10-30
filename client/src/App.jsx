@@ -10,7 +10,7 @@ import Footer from "./components/Footer";
 import Home from "./Home";
 import ListProperty from "./ListProperty";
 import CreateAccount from "./CreateAccount";
-import Signin from "./Signin";
+import Signin from "./signin";
 import PartnerDetails from "./PartnerDetails";
 import PartnerPassword from "./PartnerPassword";
 import Stays from "./Stays";
@@ -89,10 +89,13 @@ import ReserveRental from "./ReserveRental";
 import About from "./About";
 import Faq from "./Faq";
 import Preferences from "./user/Preferences";
-import SigninPartner from "./SigninPartner";
+import SigninPartner from "./Signinpartner";
 import Authme from "./Authme";
 import Recovery from "./Recovery";
 import SigninAdmin from "./SiginAdmin";
+import Privacy from "./Privacy";
+import TermsOfUse from "./Termsofuse";
+import Editstays from "./partner/editstays";
 
 axios.defaults.baseURL = "https://smashapartments.com/";
 axios.defaults.withCredentials = true;
@@ -117,6 +120,8 @@ function App() {
         <Route path="/stays" element={<Stays />} />
         <Route path="/aboutus" element={<About />} />
         <Route path="/faqs" element={<Faq />} />
+        <Route path="/privacypolicy" element={<Privacy />} />
+        <Route path="/termsofuse" element={<TermsOfUse />} />
         <Route path="/support" element={<Support />} />
         <Route path="/cooffice" element={<Cooffice />} />
         <Route path="/pickups" element={<Pickups />} />
@@ -157,6 +162,7 @@ function App() {
         <Route path="/partner/help" element={<Help />} />
         <Route path="/partner/managelistings/addlisting" element={<AddListing />} />
         <Route path="/partner/managelistings/addlisting/addstays" element={<AddStays />} />
+        <Route path="/partner/managelistings/editlisting/editstays" element={<Editstays />} />
         <Route path="/partner/managelistings/addlisting/addcooffice" element={<AddCooffice />} />
         <Route path="/partner/managelistings/addlisting/addcarrentals" element={<AddCarRentals />} />
         <Route path="/partner/managelistings/addlisting/addairportpickup" element={<AddAirportPickup />} />

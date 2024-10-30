@@ -147,7 +147,7 @@ export default function ReserveCooffice() {
   return (
     <>
       <div className="shade_2 df">
-        <h1>Search for cooffice</h1>
+        <h1>Search for co-office</h1>
         <p>From budget offices to luxury spaces and everything in between</p>
         <img src="/assets/linear_bg.png" className="shade_bg" alt="" />
         <div className="shade_item">

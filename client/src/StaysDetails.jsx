@@ -1,9 +1,13 @@
 import React, { useEffect, useState, useContext } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import axios from 'axios';
-import { toast } from 'react-toastify'; // Import React Toastify
-import { UserContext } from '../context/userContext'; // Adjust path as needed
+import { toast } from 'react-toastify';
+import { UserContext } from '../context/userContext';
 import { useNavigate } from 'react-router-dom';
+import { ImageRow, Modal } from './ImageRow'; // Adjust the path if necessary
+import styled from 'styled-components';
+import MapModal from './MapModal';
+
 
 export default function StaysDetails() {
   const navigate = useNavigate();
@@ -13,6 +17,7 @@ export default function StaysDetails() {
   const [listing, setListing] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isMapModalOpen, setIsMapModalOpen] = useState(false);
   const [liked, setLiked] = useState(false);
   const { user } = useContext(UserContext);
 
@@ -36,6 +41,16 @@ export default function StaysDetails() {
 
     fetchListing();
   }, [id, user]);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  const openModal = (index) => {
+    setCurrentImageIndex(index);
+    setIsModalOpen(true);
+  };
+  
+  const closeModal = () => setIsModalOpen(false);
+  
   const handleShare = () => {
     const currentUrl = window.location.href; // Get the current URL
     navigator.clipboard.writeText(currentUrl) // Copy URL to clipboard
@@ -92,13 +107,11 @@ export default function StaysDetails() {
             <div className="list_node">
               <div className="list_1">
                 <img
-                    src={
-                      listing.images?.[0]?.url
-                        ? `https://smashapartments.com/uploads/${listing.images[0].media_name}`
-                        : "/assets/properties (2).png"
-                    }
-                    alt={listing.property_name || "Property Image"}
-                  />
+                  src={listing.images?.[0]?.url ? 
+                       `http://localhost:8000/${listing.images[0].url}` : 
+                       '/assets/properties (2).png'}
+                  alt={listing.property_name || 'Property Image'}
+                />
               </div>
               <div className="list_2">
                 <div className="l22">
@@ -122,7 +135,7 @@ export default function StaysDetails() {
                       <h3>{listing.reviews || 'No reviews'}</h3>
                     </div>
                     <div
-                      className="button b3"
+                      className="rating_cont"
                       style={{
                         marginLeft: 10,
                         maxWidth: "50px !important",
@@ -158,6 +171,18 @@ export default function StaysDetails() {
               </div>
             </div>
           </div>
+          <ImageRow images={listing.images} onImageClick={openModal} />
+
+          <Modal
+  images={listing.images}
+  isOpen={isModalOpen}
+  onClose={closeModal}
+  title={listing.property_name}
+  onReserveClick={handleReserveClick}
+  currentImageIndex={currentImageIndex}
+  setCurrentImageIndex={setCurrentImageIndex}
+/>
+
           <div className="info_row">
             <div className="l54">
               <div>
@@ -179,6 +204,19 @@ export default function StaysDetails() {
               />
           </div>
           </div>
+          <br />
+          <div className="button b3 b4 b2" style={{ marginBottom: '20px' }} onClick={() => setIsMapModalOpen(true)}>
+  <i className="bx bx-map" style={{ marginRight: '8px' }} />
+  View on Map
+</div>
+
+<MapModal
+  isOpen={isMapModalOpen}
+  onClose={() => setIsMapModalOpen(false)}
+  propertyName={listing.property_name}
+  city={listing.city}
+  state={listing.state_name}
+/>
           <div className="action_row">
             <h2 className="action_init">Overview</h2>
 

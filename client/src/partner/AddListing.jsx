@@ -4,22 +4,22 @@ import { useContext } from 'react';
 import { UserContext } from '../../context/userContext';
 
 export default function AddListing() {
-  const { user, loading } = useContext(UserContext); // Get the user and loading state from context
+  const { user, loading } = useContext(UserContext); 
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (loading) return; // Wait until loading is complete
+    if (loading) return; 
     if (!user) {
-      navigate("/signin"); // Redirect to sign-in if no user is found
+      navigate("/signin"); 
     } else if (user.interface !== 'partner') {
-      navigate("/"); // Redirect if the user is not of type 'user'
+      navigate("/"); 
     }
   }, [user, loading, navigate]);
 
   return (
     <>
     <div className="shade_2">
-      <h1>Our partner</h1>
+      <h1>Our vendor</h1>
       <img src="/assets/linear_bg.png" className="shade_bg" alt="" />
       <div className="shade_item">
         <img src="/assets/bg (2).png" alt="" />

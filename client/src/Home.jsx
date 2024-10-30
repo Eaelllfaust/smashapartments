@@ -5,9 +5,11 @@ import "react-datepicker/dist/react-datepicker.css";
 import { Link } from "react-router-dom";
 import axios from "axios";
 import AirportPickups from "./AiportPickups";
-import { toast } from "react-toastify"; // Import React Toastify
+import { toast } from "react-toastify"; 
 
 export default function Home() {
+
+  const [feedbackMessage, setFeedbackMessage] = useState("Select check-in date");
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState([]);
@@ -201,7 +203,6 @@ export default function Home() {
       setHasMore(response.data.length === 5);
     } catch (error) {
       console.error("Error fetching listings:", error);
-      toast.error("Failed to fetch properties");
     } finally {
       setLoading(false);
     }
@@ -230,9 +231,9 @@ export default function Home() {
             </Link>
           </div>
         </div>
-        <h1>
-          Your all-in-one platform{" "}
-          <span className="swit"> for seamless bookings. </span>
+        <h1 className="">
+          Your all-in-one platform{" "} <br />
+          <span className="swit switt"> for seamless bookings.</span>
         </h1>
         <img src="assets/linear_bg.png" className="shade_bg" alt="" />
         <div className="shade_item">
@@ -274,19 +275,59 @@ export default function Home() {
               </div>
             )}
           </div>
-
           <div className="search_item_max">
             <img src="/assets/calendar-week-regular-84.png" alt="" />
             <DatePicker
-              selectsRange={true}
-              startDate={startDate}
-              endDate={endDate}
-              placeholderText="Check in - Check out"
-              onChange={(update) => {
-                setDateRange(update);
-              }}
-              withPortal
-            />
+      selectsRange={true}
+      startDate={startDate}
+      endDate={endDate}
+      placeholderText="Check in - Check out"
+      onCalendarOpen={() => {
+        setFeedbackMessage("Select check-in date");
+      }}
+      onChange={(update) => {
+        setDateRange(update);
+
+        if (update[0] && !update[1]) {
+          setFeedbackMessage("Select check-out date");
+        } else if (update[1]) {
+          setFeedbackMessage(""); // Clear feedback when both dates are selected
+        }
+      }}
+      renderCustomHeader={({
+        monthDate,
+        decreaseMonth,
+        increaseMonth,
+        prevMonthButtonDisabled,
+        nextMonthButtonDisabled,
+      }) => (
+        <div style={{ textAlign: "center", padding: "5px" }}>
+          <p className="feedback-message">{feedbackMessage}</p>
+        <br />
+          <button
+           className="swi"
+            onClick={decreaseMonth}
+            disabled={prevMonthButtonDisabled}
+            style={{ marginRight: "10px" }}
+          >
+            {"<"}
+          </button>
+          <span>
+            {monthDate.toLocaleString("default", { month: "long" })}{" "}
+            {monthDate.getFullYear()}
+          </span>
+          <button
+          className="swi"
+            onClick={increaseMonth}
+            disabled={nextMonthButtonDisabled}
+            style={{ marginLeft: "10px" }}
+          >
+            {">"}
+          </button>
+        </div>
+      )}
+      withPortal
+    />
           </div>
           <div className="search_item_max" ref={popoverRef1}>
             <img src="/assets/user-regular-84.png" alt="" />
@@ -359,7 +400,11 @@ export default function Home() {
           <button className="scroll-button left-button">&lt;</button>
           <div className="row_main">
             <div className="pt">
+              <div className="pthold">
+              <Link to="/stays?propertyType=hotel">
               <img src="assets/properties (2).png" alt="" />
+              </Link>
+              </div>
               <h3>Hotels</h3>
               <p> Find hotels available in your location</p>
               <Link to="/stays?propertyType=hotel" className="button b2 b3">
@@ -367,7 +412,12 @@ export default function Home() {
               </Link>
             </div>
             <div className="pt">
+            <div className="pthold">
+            <Link
+                to="/stays?propertyType=apartments">
               <img src="assets/properties (1).png" alt="" />
+              </Link>
+              </div>
               <h3>Apartments</h3>
               <p>Find apartments available in your location</p>
               <Link
@@ -378,7 +428,9 @@ export default function Home() {
               </Link>
             </div>
             <div className="pt">
-              <img src="assets/properties (3).png" alt="" />
+            <div className="pthold">  <Link to="/stays?propertyType=villa">
+              <img src="assets/properties (3).png" alt="" /></Link>
+             </div>
               <h3>Villas</h3>
               <p>Find villas available in your location</p>
               <Link to="/stays?propertyType=villa" className="button b2 b3">
@@ -401,7 +453,7 @@ export default function Home() {
               <div className="list_node" key={listing._id}>
                 <div className="list_1">
                   <img
-                    src={`http://smashapartments.com/uploads/${listing.images[0]?.media_name}`}
+                    src={`http://localhost:8000/uploads/${listing.images[0]?.media_name}`}
                     alt={listing.property_name}
                   />
                 </div>
@@ -410,13 +462,12 @@ export default function Home() {
                     <div>
                       <div style={{ display: "flex", alignItems: "center" }}>
                         <h2>{listing.property_name}</h2>
-                        <div className="star_holder">
+                        {/* <div className="star_holder">
                           <i className="bx bx-star" />
                           <i className="bx bx-star" />
                           <i className="bx bx-star" />
                           <i className="bx bx-star" />
-                          <i className="bx bx-star" />
-                        </div>
+                        </div> */}
                       </div>
                       <h3 className="small_1" style={{ marginTop: 10 }}>
                         {listing.city}, {listing.state_name}
@@ -428,7 +479,7 @@ export default function Home() {
                         <h3>{listing.reviews || "No reviews"}</h3>
                       </div>
                       <div
-                        className="button b3"
+                        className="rating_cont"
                         style={{
                           marginLeft: 10,
                           maxWidth: "50px !important",

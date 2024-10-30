@@ -68,7 +68,7 @@ export default function CoofficeDetails() {
   return (
     <>
       <div className="shade_2 df">
-        <h1>Search for cooffice</h1>
+        <h1>Search for co-office</h1>
         <p>From budget offices to luxury spaces and everything in between</p>
         <img src="/assets/linear_bg.png" className="shade_bg" alt="Background" />
         <div className="shade_item">
@@ -91,7 +91,7 @@ export default function CoofficeDetails() {
               <div className="list_1">
                 <img
                   src={cooffice.images?.[0]?.url ? 
-                       `https://smashapartments.com/uploads/${cooffice.images[0].media_name}` : 
+                       `http://localhost:8000/${cooffice.images[0].url}` : 
                        '/assets/bg (1).png'}
                   alt={cooffice.property_name || 'Cooffice Image'}
                 />
@@ -117,7 +117,7 @@ export default function CoofficeDetails() {
                       <h3>{cooffice.reviews || 'No reviews'}</h3>
                     </div>
                     <div
-                      className="button b3"
+                      className="rating_cont"
                       style={{
                         marginLeft: 10,
                         maxWidth: "50px !important",

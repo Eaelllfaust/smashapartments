@@ -40,7 +40,7 @@ export default function ListProperty() {
             </div>
             <section className="form_area">
                 <div className="div">
-                    <h2>Create partner account</h2>
+                    <h2>Create vendor account</h2>
                     <br />
                     <p>
                         Whether hosting is your side passion or full-time job, list your home

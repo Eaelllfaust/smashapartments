@@ -1,50 +1,23 @@
 import React, { useState, useEffect, useContext, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { UserContext } from "../../context/userContext";
 import { toast } from "react-toastify";
 import axios from "axios";
 import "react-toastify/dist/ReactToastify.css";
 
-export default function AddStays() {
+export default function Editstays() {
   const { user, loading } = useContext(UserContext);
   const navigate = useNavigate();
+  const [existingImages, setExistingImages] = useState([]);
+  const [images, setImages] = useState({
+    existing: [], // for images already on the server
+    new: []       // for newly uploaded images
+  });
+  
+  const id = new URLSearchParams(location.search).get("id");
+
   const [selectedImages, setSelectedImages] = useState([]);
   const fileInputRef = useRef(null);
-
-  useEffect(() => {
-    if (loading) return;
-    if (!user) {
-      navigate("/signin");
-    } else if (user.interface !== "partner") {
-      navigate("/");
-    }
-  }, [user, loading, navigate]);
-
-  const handleImageSelect = (e) => {
-    const files = Array.from(e.target.files);
-    const validFiles = files.filter((file) => file.size <= 8 * 1024 * 1024);
-    if (validFiles.length < files.length) {
-      toast.error(
-        "Some files exceed the 8MB size limit. They were not selected."
-      );
-    }
-    if (selectedImages.length + validFiles.length > 15) {
-      toast.error("You can only upload up to 15 images.");
-    } else {
-      setSelectedImages([...selectedImages, ...validFiles]);
-    }
-    e.target.value = "";
-  };
-
-  const handleImageRemove = (indexToRemove) => {
-    setSelectedImages(
-      selectedImages.filter((_, index) => index !== indexToRemove)
-    );
-  };
-
-  const triggerFileInput = () => {
-    fileInputRef.current.click();
-  };
 
   const [state, setState] = useState({
     propertyName: "",
@@ -72,6 +45,107 @@ export default function AddStays() {
     cleaning: false,
   });
 
+  useEffect(() => {
+    if (loading) return;
+    if (!user) {
+      navigate("/signin");
+    } else if (user.interface !== "partner") {
+      navigate("/");
+    } else if (id) {
+      fetchListingData(id);
+    }
+  }, [user, loading, navigate, id]);
+
+  const fetchListingData = async (listingId) => {
+    try {
+      const response = await axios.get(`/getlisting/${listingId}`);
+      const data = response.data.stayListing; // Assuming response format
+      setState({
+        propertyName: data.property_name,
+        city: data.city,
+        state_name: data.state_name,
+        propertyType: data.property_type,
+        propertyDescription: data.description,
+        numRooms: data.number_of_rooms,
+        numBathrooms: data.number_of_bathrooms,
+        maxOccupancy: data.maximum_occupancy,
+        pricePerNight: data.price_per_night,
+        availableFrom: data.available_from.slice(0, 10),
+        availableTo: data.available_to.slice(0, 10),
+        contactName: data.contact_name,
+        weeklyDiscount: data.weekly_discount,
+        monthlyDiscount: data.monthly_discount,
+        contactPhone: data.contact_phone,
+        contactEmail: data.contact_email,
+        securityDeposit: data.security_levy,
+        cancellationPolicy: data.cancellation_policy,
+        refundPolicy: data.refund_policy,
+        wifi: data.wifi || false,
+        pool: data.pool || false,
+        parking: data.parking || false,
+        gym: data.gym || false,
+        pets: data.pets || false,
+        smoking: data.smoking || false,
+        meals: data.meals || false,
+        cleaning: data.cleaning || false,
+      });
+
+      setImages(prev => ({
+        ...prev,
+        existing: data.images.map((img) => ({
+          url: img.location,
+          name: img.name,
+        }))
+      }));
+    } catch (error) {
+      toast.error("Failed to load listing data.");
+    }
+  };
+
+  
+  const handleImageSelect = (e) => {
+    const files = Array.from(e.target.files);
+    const validFiles = files.filter((file) => file.size <= 8 * 1024 * 1024);
+    
+    if (validFiles.length < files.length) {
+      toast.error("Some files exceed the 8MB size limit.");
+    }
+    
+    if (images.existing.length + images.new.length + validFiles.length > 15) {
+      toast.error("You can only upload up to 15 images.");
+      return;
+    }
+  
+    const newImages = validFiles.map((file) => ({
+      file,
+      preview: URL.createObjectURL(file),
+    }));
+    
+    setImages(prev => ({
+      ...prev,
+      new: [...prev.new, ...newImages]
+    }));
+    
+    e.target.value = "";
+  };
+  
+  const handleImageRemove = (index, type) => {
+    setImages(prev => ({
+      ...prev,
+      [type]: prev[type].filter((_, i) => i !== index)
+    }));
+  
+    // If removing a new image, revoke its object URL
+    if (type === 'new' && images.new[index]?.preview) {
+      URL.revokeObjectURL(images.new[index].preview);
+    }
+  };
+  
+
+  const triggerFileInput = () => {
+    fileInputRef.current.click();
+  };
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setState({
@@ -81,121 +155,38 @@ export default function AddStays() {
   };
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!state.propertyName) {
-      toast.error("Property name is required!", { position: "top-right" });
-      return;
-    }
-    if (!state.city) {
-      toast.error("City is required!", { position: "top-right" });
-      return;
-    }
-    if (!state.state_name) {
-      toast.error("State is required!", { position: "top-right" });
-      return;
-    }
-    if (!state.propertyType) {
-      toast.error("Property type is required!", { position: "top-right" });
-      return;
-    }
-    if (!state.propertyDescription) {
-      toast.error("Property description is required!", {
-        position: "top-right",
-      });
-      return;
-    }
-    if (!state.numRooms) {
-      toast.error("Number of rooms is required!", { position: "top-right" });
-      return;
-    }
-    if (!state.numBathrooms) {
-      toast.error("Number of bathrooms is required!", {
-        position: "top-right",
-      });
-      return;
-    }
-    if (!state.maxOccupancy) {
-      toast.error("Maximum occupancy is required!", { position: "top-right" });
-      return;
-    }
-    if (!state.pricePerNight) {
-      toast.error("Price per night is required!", { position: "top-right" });
-      return;
-    }
-    if (state.pricePerNight < 1000) {
-      toast.error("Price per night must be at least 1000!", {
-        position: "top-right",
-      });
-      return;
-    }
-    if (!state.availableFrom) {
-      toast.error("Available from date is required!", {
-        position: "top-right",
-      });
-      return;
-    }
-    if (!state.availableTo) {
-      toast.error("Available to date is required!", { position: "top-right" });
-      return;
-    }
-    if (!state.contactName) {
-      toast.error("Contact name is required!", { position: "top-right" });
-      return;
-    }
-    if (!state.contactPhone) {
-      toast.error("Contact phone number is required!", {
-        position: "top-right",
-      });
-      return;
-    }
-    if (!state.contactEmail) {
-      toast.error("Contact email is required!", { position: "top-right" });
-      return;
-    }
-
     const formData = new FormData();
+    
+    // Append all form fields
     Object.keys(state).forEach((key) => {
-      if (typeof state[key] === "boolean") {
-        formData.append(key, state[key].toString());
-      } else {
-        formData.append(key, state[key]);
-      }
+      const value = state[key];
+      formData.append(key, typeof value === "boolean" ? value.toString() : value);
     });
-
-    selectedImages.forEach((image, index) => {
-      formData.append("images", image);
+    
+    // Append new images
+    images.new.forEach((image) => {
+      formData.append("images", image.file);
     });
-
+    
+    // Append existing image URLs - Modified to send each URL separately
+    images.existing.forEach((image) => {
+      formData.append("existingImages", image.url); // Changed from existingImages[] to existingImages
+    });
+    
     try {
-      const response = await axios.post("/stayslisting", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
+      const response = await axios.put(`/stayslisting/${id}`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
       });
-
-      if (response.data.error) {
-        toast.error(response.data.error);
-        if (response.data.details) {
-          response.data.details.forEach((detail) => toast.error(detail));
-        }
-      } else {
-        toast.success(response.data.message);
-        navigate("/partner/managelistings/");
-      }
+      toast.success(response.data.message);
     } catch (error) {
-      console.error("Error submitting form:", error);
-      toast.error(
-        error.response?.data?.error || "An error occurred. Please try again."
-      );
-      if (error.response?.data?.details) {
-        error.response.data.details.forEach((detail) => toast.error(detail));
-      }
+      toast.error(error.response?.data?.error || "An error occurred. Please try again.");
     }
   };
-
+  
   return (
     <>
       <div className="shade_2">
-        <h1>Our vendor</h1>
+        <h1>Our Vendor</h1>
         <img src="/assets/linear_bg.png" className="shade_bg" alt="" />
         <div className="shade_item">
           <img src="/assets/bg (2).png" alt="" />
@@ -225,10 +216,7 @@ export default function AddStays() {
                   <h3>
                     Upload media <i className="bx bx-plus" />
                   </h3>
-                  <p>
-                    Upload up to 15 images, and a minimum of 4 images. 8MB Max
-                    per image.
-                  </p>
+                  <p>Upload up to 15 images, 8MB max per image.</p>
                 </div>
                 <input
                   ref={fileInputRef}
@@ -240,47 +228,60 @@ export default function AddStays() {
                 />
               </div>
               <div className="image_preview">
-                {selectedImages.map((image, index) => (
-                  <div key={index} className="image_container">
-                    <img
-                      src={URL.createObjectURL(image)}
-                      alt={`preview ${index}`}
-                    />
-                    <button onClick={() => handleImageRemove(index)}>
-                      Remove
-                    </button>
-                  </div>
-                ))}
-              </div>
+    {images.existing.map((image, index) => (
+      <div key={`existing-${index}`} className="image_container">
+        <img src={`http://localhost:8000/${image.url}`} alt={`existing preview ${index}`} />
+        <button 
+          type="button" 
+          onClick={() => handleImageRemove(index, 'existing')}
+          className="remove-btn"
+        >
+          Remove
+        </button>
+      </div>
+    ))}
+    {images.new.map((image, index) => (
+      <div key={`new-${index}`} className="image_container">
+        <img src={image.preview} alt={`new preview ${index}`} />
+        <button 
+          type="button" 
+          onClick={() => handleImageRemove(index, 'new')}
+          className="remove-btn"
+        >
+          Remove
+        </button>
+      </div>
+    ))}
+  </div>
+
             </div>
             <div className="list_2 v85">
               <form onSubmit={handleSubmit}>
                 <h2 className="support_text">Add information</h2>
                 <br />
                 <div className="form">
-                  <h3>Basic information</h3>
+                  <h3>Basic Information</h3>
                   <br />
-
                   <label htmlFor="propertyName">
-                    Property name{" "}
-                    <span className="required">This field is required</span>
+                    Property Name <span className="required">Required</span>
                   </label>
                   <br />
+
                   <input
                     id="propertyName"
                     name="propertyName"
                     className="input"
                     type="text"
-                    placeholder="Property name"
+                    placeholder="Property Name"
                     value={state.propertyName}
                     onChange={handleChange}
                     required
                   />
                   <br />
 
+                  {}
                   <label htmlFor="city">
-                    City{" "}
-                    <span className="required">This field is required</span>
+                    City <span className="required">Required</span>
                   </label>
                   <br />
                   <input
@@ -296,8 +297,7 @@ export default function AddStays() {
                   <br />
 
                   <label htmlFor="state_name">
-                    State{" "}
-                    <span className="required">This field is required</span>
+                    State <span className="required">Required</span>
                   </label>
                   <br />
                   <input
@@ -313,8 +313,7 @@ export default function AddStays() {
                   <br />
 
                   <label htmlFor="propertyType">
-                    Property type{" "}
-                    <span className="required">This field is required</span>
+                    Property Type <span className="required">Required</span>
                   </label>
                   <br />
                   <select
@@ -334,8 +333,8 @@ export default function AddStays() {
                   <br />
 
                   <label htmlFor="propertyDescription">
-                    Property description{" "}
-                    <span className="required">This field is required</span>
+                    Property Description{" "}
+                    <span className="required">Required</span>
                   </label>
                   <br />
                   <textarea
@@ -347,7 +346,6 @@ export default function AddStays() {
                     required
                   ></textarea>
                   <br />
-
                   <label htmlFor="numRooms">
                     Number of rooms{" "}
                     <span className="required">This field is required</span>
@@ -364,7 +362,6 @@ export default function AddStays() {
                     required
                   />
                   <br />
-
                   <label htmlFor="numBathrooms">
                     Number of bathrooms{" "}
                     <span className="required">This field is required</span>
@@ -398,7 +395,6 @@ export default function AddStays() {
                     required
                   />
                   <br />
-
                   <label htmlFor="pricePerNight">
                     Price per night{" "}
                     <span className="required">This field is required</span>
@@ -444,7 +440,6 @@ export default function AddStays() {
                     required
                   />
                   <br />
-
                   <label htmlFor="availableTo">
                     Available to{" "}
                     <span className="required">This field is required</span>
@@ -460,7 +455,6 @@ export default function AddStays() {
                     required
                   />
                   <br />
-
                   <h3>Amenities</h3>
                   <br />
                   {[
@@ -497,7 +491,6 @@ export default function AddStays() {
                     onChange={handleChange}
                   />
                   <br />
-
                   <label htmlFor="monthlyDiscount">Monthly Discount (%)</label>
                   <br />
                   <input
@@ -509,7 +502,6 @@ export default function AddStays() {
                     onChange={handleChange}
                   />
                   <br />
-
                   <h3>Contact Information</h3>
                   <br />
                   <label htmlFor="contactName">
@@ -528,7 +520,6 @@ export default function AddStays() {
                     required
                   />
                   <br />
-
                   <label htmlFor="contactPhone">
                     Contact Phone{" "}
                     <span className="required">This field is required</span>
@@ -563,7 +554,7 @@ export default function AddStays() {
                     required
                   />
                   <br />
-
+                  <br />
                   <h3>Policies</h3>
                   <br />
                   <label htmlFor="cancellationPolicy">
@@ -589,7 +580,7 @@ export default function AddStays() {
                     onChange={handleChange}
                   />
                   <br />
-
+          
                   <button className="button b2 stick" type="submit">
                     Submit
                   </button>

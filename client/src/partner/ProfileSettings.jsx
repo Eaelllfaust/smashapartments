@@ -10,7 +10,7 @@ export default function ProfileSettings() {
   return (
     <>
     <div className="shade_2">
-      <h1>Our partner</h1>
+      <h1>Our vendor</h1>
       <img src="../assets/linear_bg.png" className="shade_bg" alt="" />
       <div className="shade_item">
         <img src="../assets/bg (2).png" alt="" />
@@ -40,7 +40,7 @@ export default function ProfileSettings() {
           <br />
         </div>
         <div className="node_item">
-          <h2>Payment methods</h2>
+          <h2>Payout details</h2>
           <br />
           <Link to="payoutsettings" className="link">
             Edit payout methods

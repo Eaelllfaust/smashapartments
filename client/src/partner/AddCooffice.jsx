@@ -28,6 +28,7 @@ export default function AddCooffice() {
     catering: false,
     support: false,
     pricePerDay: "",
+    securityDeposit: "",
     pricePerWeek: "",
     pricePerMonth: "",
     availableFrom: "",
@@ -56,7 +57,7 @@ export default function AddCooffice() {
     } else {
       setSelectedImages([...selectedImages, ...newImages]);
     }
-    e.target.value = ""; // Clear the input so the same file can be selected again if needed
+    e.target.value = ""; 
   };
 
   const handleImageRemove = (indexToRemove) => {
@@ -79,10 +80,82 @@ export default function AddCooffice() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!state.officeSpaceName) {
+      toast.error("Office space name is required.");
+      return;
+    }
+    if (!state.city) {
+      toast.error("City is required.");
+      return;
+    }
+    if (!state.state_name) {
+      toast.error("State is required.");
+      return;
+    }
+    if (!state.officeType) {
+      toast.error("Office type is required.");
+      return;
+    }
+    if (!state.pricePerDay || state.pricePerDay < 1000) {
+      toast.error("Price per day must be at least 1000.");
+      return;
+    }
+    if (!state.pricePerWeek) {
+      toast.error("Price per week is required.");
+      return;
+    }
+    if (!state.pricePerMonth) {
+      toast.error("Price per month is required.");
+      return;
+    }
+    if (!state.availableFrom) {
+      toast.error("Available from date is required.");
+      return;
+    }
+    if (!state.availableTo) {
+      toast.error("Available to date is required.");
+      return;
+    }
+    if (!state.cancellationPolicy) {
+      toast.error("Cancellation policy is required.");
+      return;
+    }
+    if (!state.refundPolicy) {
+      toast.error("Refund policy is required.");
+      return;
+    }
+    if (!state.contactName) {
+      toast.error("Contact name is required.");
+      return;
+    }
+    if (!state.contactPhone) {
+      toast.error("Contact phone is required.");
+      return;
+    }
+    if (!state.contactEmail) {
+      toast.error("Contact email is required.");
+      return;
+    }
+    if (new Date(state.availableFrom) >= new Date(state.availableTo)) {
+      toast.error(
+        "Available from date must be earlier than available to date."
+      );
+      return;
+    }
+    if (selectedImages.length < 4) {
+      toast.error("At least 4 images are required.");
+      return;
+    }
+
+    for (const image of selectedImages) {
+      if (image.size > 8 * 1024 * 1024) {
+        toast.error("Each image must be less than 8MB.");
+        return;
+      }
+    }
 
     const formData = new FormData();
     Object.keys(state).forEach((key) => {
-      // Convert boolean values to strings
       if (typeof state[key] === "boolean") {
         formData.append(key, state[key].toString());
       } else {
@@ -124,7 +197,7 @@ export default function AddCooffice() {
   return (
     <>
       <div className="shade_2">
-        <h1>Our partner</h1>
+        <h1>Our vendor</h1>
         <img src="/assets/linear_bg.png" className="shade_bg" alt="" />
         <div className="shade_item">
           <img src="/assets/bg (2).png" alt="" />
@@ -154,7 +227,10 @@ export default function AddCooffice() {
                   <h3>
                     Upload media <i className="bx bx-plus" />
                   </h3>
-                  <p>Upload up to 5 images. 5MB Max per image.</p>
+                  <p>
+                    Upload up to 15 images, and minimum of 4 images. 8MB Max per
+                    image.
+                  </p>
                 </div>
                 <input
                   ref={fileInputRef}
@@ -246,11 +322,18 @@ export default function AddCooffice() {
                     onChange={handleChange}
                     required
                   >
+                    {" "}
+                    <option value="">Select office type</option>
                     <option value="virtual-office">Virtual office</option>
                     <option value="meeting-room">Meeting room</option>
                     <option value="private-office">Private office</option>
                     <option value="shared-workspace">Shared workspace</option>
                   </select>
+                  <br />
+                  <label htmlFor="description">
+                    Description{" "}
+                    <span className="required">This field is required</span>
+                  </label>
                   <br />
                   <textarea
                     id="description"
@@ -258,12 +341,14 @@ export default function AddCooffice() {
                     placeholder="Enter description"
                     value={state.description}
                     onChange={handleChange}
+                    required
                   />
                   <div className="line" />
                   <h3>Details and amenities</h3>
                   <br />
                   <label htmlFor="size">
-                    Size of office space (square footage)
+                    Size of office space (square footage){" "}
+                    <span className="required">This field is required</span>
                   </label>
                   <br />
                   <input
@@ -274,9 +359,13 @@ export default function AddCooffice() {
                     placeholder="Square footage"
                     value={state.size}
                     onChange={handleChange}
+                    required
                   />
                   <br />
-                  <label htmlFor="numDesks">Number of desks</label>
+                  <label htmlFor="numDesks">
+                    Number of desks{" "}
+                    <span className="required">This field is required</span>
+                  </label>
                   <br />
                   <input
                     id="numDesks"
@@ -286,6 +375,7 @@ export default function AddCooffice() {
                     placeholder="Number of desks"
                     value={state.numDesks}
                     onChange={handleChange}
+                    required
                   />
                   <br />
                   <h3>Amenities</h3>
@@ -363,9 +453,11 @@ export default function AddCooffice() {
                       onChange={handleChange}
                     />
                   </div>
+                  <br />
                   <div className="line" />
                   <h3>Additional services</h3>
                   <br />
+
                   <div className="flex_item">
                     <label htmlFor="catering">Catering</label>
                     <input
@@ -388,6 +480,7 @@ export default function AddCooffice() {
                   </div>
                   <div className="line" />
                   <label>Prices</label>
+                  <br />
                   <br />
                   <label htmlFor="pricePerDay">
                     Price per day{" "}
@@ -437,7 +530,25 @@ export default function AddCooffice() {
                     required
                   />
                   <br />
+
+                  <label htmlFor="securityDeposit">
+                    Security Deposit (optional)
+                  </label>
+                  <br />
+                  <input
+                    id="securityDeposit"
+                    name="securityDeposit"
+                    className="input"
+                    type="number"
+                    placeholder="Security deposit"
+                    value={state.securityDeposit}
+                    onChange={handleChange}
+                  />
+                  <br />
+                  <br />
+                  <div className="line"></div>
                   <label>Availability</label>
+                  <br />
                   <br />
                   <label htmlFor="availableFrom">
                     Available from{" "}

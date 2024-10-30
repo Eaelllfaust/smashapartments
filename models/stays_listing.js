@@ -89,6 +89,9 @@ const staysListingSchema = new mongoose.Schema({
   contact_email: {
     type: String,
   },
+  security_levy: {
+    type: String,
+  },
   status: {
     type: String,
     default: 'active',

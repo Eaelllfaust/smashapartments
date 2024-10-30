@@ -188,7 +188,7 @@ export default function ReserveStays() {
                   <img
                     src={
                       stayDetails.images?.[0]?.url
-                        ? `https://smashapartments.com/uploads/${stayDetails.images[0].media_name}`
+                        ? `http://localhost:8000/${stayDetails.images[0].url}`
                         : "/assets/properties (2).png"
                     }
                     alt={stayDetails.property_name || "Property Image"}
@@ -225,7 +225,7 @@ export default function ReserveStays() {
                         <h3>{stayDetails.reviews || "No reviews"}</h3>
                       </div>
                       <div
-                        className="button b3"
+                        className="rating_cont"
                         style={{
                           marginLeft: 10,
                           maxWidth: "50px !important",

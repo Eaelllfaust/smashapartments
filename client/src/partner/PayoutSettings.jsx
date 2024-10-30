@@ -91,7 +91,7 @@ export default function PayoutSettings() {
               <input
                 type="text"
                 name="accountName"
-                placeholder="Kenneth Okpala"
+                placeholder="Account name"
                 value={formData.accountName}
                 onChange={handleChange}
                 required
@@ -102,7 +102,7 @@ export default function PayoutSettings() {
               <input
                 type="text"
                 name="accountNumber"
-                placeholder="701135947"
+                placeholder="Account number"
                 value={formData.accountNumber}
                 onChange={handleChange}
                 required
@@ -113,7 +113,7 @@ export default function PayoutSettings() {
               <input
                 type="text"
                 name="bankName"
-                placeholder="Paycom"
+                placeholder="Bank name"
                 value={formData.bankName}
                 onChange={handleChange}
                 required

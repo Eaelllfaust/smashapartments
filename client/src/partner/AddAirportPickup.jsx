@@ -42,13 +42,13 @@ export default function AddAirportPickup() {
 
   const handleImageSelect = (e) => {
     const files = Array.from(e.target.files);
-    const newImages = files.filter((file) => file.size <= 5 * 1024 * 1024); // 5MB limit
+    const newImages = files.filter((file) => file.size <= 5 * 1024 * 1024); 
     if (selectedImages.length + newImages.length > 5) {
       alert("You can only upload up to 5 images.");
     } else {
       setSelectedImages([...selectedImages, ...newImages]);
     }
-    e.target.value = ""; // Clear the input so the same file can be selected again if needed
+    e.target.value = ""; 
   };
 
   const handleImageRemove = (indexToRemove) => {
@@ -71,10 +71,78 @@ export default function AddAirportPickup() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-  
+    if (!state.serviceName) {
+      toast.error("Office space name is required.");
+      return;
+    }
+    if (!state.description) {
+      toast.error("A description is required.");
+      return;
+    }
+    if (!state.carMakeModel) {
+      toast.error("Car model is required.");
+      return;
+    }
+    if (!state.carColor) {
+      toast.error("Car color is required.");
+      return;
+    }
+    if (!state.plateNumber) {
+      toast.error("Plate number is required.");
+      return;
+    }
+    if (!state.driverName) {
+      toast.error("Driver name is required.");
+      return;
+    }
+    if (!state.driverLicenseNumber) {
+      toast.error("Licence number is required.");
+      return;
+    }
+    if (!state.driverPhoneNumber) {
+      toast.error("Driver phone number is required.");
+      return;
+    }
+    if (!state.driverEmail) {
+      toast.error("Driver email is required.");
+      return;
+    }
+    if (!state.pickupPrice) {
+      toast.error("Pickup price is required.");
+      return;
+    }
+    if (!state.availableFrom) {
+      toast.error("Available from is required.");
+      return;
+    }
+    if (!state.availableTo) {
+      toast.error("Available to is required.");
+      return;
+    }
+    if (!state.cancellationPolicy) {
+      toast.error("Cancellation policy is required.");
+      return;
+    }
+    if (!state.refundPolicy) {
+      toast.error("Refund policy is required.");
+      return;
+    }
+    if (!state.contactName) {
+      toast.error("Contact information is required");
+      return;
+    }
+    if (!state.contactPhone) {
+      toast.error("Contact information is required");
+      return;
+    }
+    if (!state.contactEmail) {
+      toast.error("Contact information is required");
+      return;
+    }
+ 
     const formData = new FormData();
     Object.keys(state).forEach((key) => {
-      // Convert boolean values to strings
+   
       if (typeof state[key] === "boolean") {
         formData.append(key, state[key].toString());
       } else {
@@ -94,21 +162,27 @@ export default function AddAirportPickup() {
       });
   
       if (response.data.error) {
-        toast.error(response.data.error);
+        toast.error(response.data.details);
       } else {
         toast.success(response.data.message);
         navigate("/partner/managelistings/");
       }
+
     } catch (error) {
       console.error("Error submitting form:", error);
-      toast.error(error.response?.data?.error || "An error occurred. Please try again.");
+      toast.error(
+        error.response?.data?.error || "An error occurred. Please try again."
+      );
+      if (error.response?.data?.details) {
+        error.response.data.details.forEach((detail) => toast.error(detail));
+      }
     }
   };
 
   return (
     <>
       <div className="shade_2">
-        <h1>Our partner</h1>
+        <h1>Our vendor</h1>
         <img src="/assets/linear_bg.png" className="shade_bg" alt="Background pattern" />
         <div className="shade_item">
           <img src="/assets/bg (2).png" alt="Partner image 1" />
@@ -138,16 +212,18 @@ export default function AddAirportPickup() {
                   <h3>
                     Upload media <i className="bx bx-plus" />
                     </h3>
-                  <p>Upload up to 5 images. 5MB Max.</p>
+                  <p>Upload up to 15 images, and minimum of 4 images. 8MB Max per image.</p>
                 </div>
             
               </div>
+              <div  className="image_preview" >
               {selectedImages.map((image, index) => (
-                  <div key={index}>
+                  <div key={index} className="image_container">
                     <img src={URL.createObjectURL(image)} alt={`Image ${index + 1}`} />
-                    <button onClick={() => handleImageRemove(index)}>Remove</button>
+                    <button  className="remove-btn" onClick={() => handleImageRemove(index)}>Remove</button>
                   </div>
                 ))}
+                </div>
                 <input
                   type="file"
                   multiple

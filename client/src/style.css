@@ -3,7 +3,7 @@
   --font-size-16: 16px;
   --font-size-24: 24px;
   --font-size-30: 30px;
-  --font-size-36: 36px;
+  --font-size-36: 30px;
   --font-size-48: 48px;
   --color-white: #fbfbfb;
   --color-black: #22205f;
@@ -22,6 +22,7 @@
 
 html {
   overflow-x: hidden !important;
+  letter-spacing: 0.5px;
 }
 
 .montserrat-100 > {
@@ -29,6 +30,20 @@ html {
   font-optical-sizing: auto;
   font-weight: 100;
   font-style: normal;
+}
+
+h2{
+  color: #333;
+  font-size: 18px;
+}
+
+h3{
+  color:#333 !important;
+}
+
+.footer div h2{
+  color:  #333;
+  font-size: 18px !important;
 }
 
 .montserrat-200 > {
@@ -199,6 +214,11 @@ nav {
   color: #fff;
   margin-right: 20px;
   min-width: fit-content;
+  padding: 5px;
+  padding-left: 10px;
+  padding-right: 10px;
+  border-radius: 100px;
+  transition: all .2s ease-in-out;
 }
 
 .menu_sa img {
@@ -210,6 +230,48 @@ nav {
   padding-left: 20px;
   padding-right: 20px;
   border-radius: 100px;
+}
+.menu_sa:hover{
+    background-color: rgba(255,255,255,0.20);
+
+}
+.node_item a{
+  background-color: rgba(0, 89, 255, 0.2);
+  padding: 5px;
+  padding-left: 20px;
+  padding-right: 20px;
+  border-radius: 100px;
+}
+.btn_22{
+  background-color: rgba(0, 89, 255, 0.2);
+  padding: 5px;
+  padding-left: 20px;
+  padding-right: 20px;
+  border-radius: 100px;
+  cursor: pointer;
+  max-width: max-content;
+}
+.ibox a{
+  background-color: rgba(0, 89, 255, 0.2);
+  padding: 5px;
+  padding-left: 20px;
+  padding-right: 20px;
+  border-radius: 100px;
+  max-width: max-content;
+}
+.noButtonStyle{
+  background-color: red !important;
+}
+.node_item a:hover{
+  background-color: rgba(0, 46, 130, 0.2);
+  padding: 5px;
+  padding-left: 20px;
+  padding-right: 20px;
+  border-radius: 100px;
+}
+.href{
+  color:#003c8f;
+  text-decoration: underline;
 }
 .shade h1 {
   position: absolute;
@@ -345,10 +407,11 @@ input {
 
 .row_main_container {
   position: relative;
+  margin: 20px;
 }
 
 .row_main {
-  padding: 20px;
+ 
   display: flex;
   justify-content: space-evenly;
   overflow-x: auto; /* Enable horizontal scrolling */
@@ -364,6 +427,7 @@ input {
 .pt {
   display: inline-block; /* Ensure items are displayed in a row */
   margin-right: 10px; /* Optional: Add some space between items */
+ 
 }
 
 .scroll-button {
@@ -436,12 +500,24 @@ nav {
   margin-bottom: 10px;
 }
 
-.pt img {
+.pthold img {
+ width: 100%;
+ height: 100%;
+ object-position: 50%;
+ object-fit: cover;
+ transition: all .2s ease-in-out;
+  
+}
+.pthold{
+  overflow: hidden;
   width: 500px;
   height: 400px;
-  object-fit: cover;
 }
-
+.pt img:hover{
+  transform: scale(110%);
+  cursor: pointer;
+  filter: brightness(0.80);
+}
 .sa_3 {
   width: 100%;
   padding: 20px;
@@ -1005,6 +1081,28 @@ a {
 .entry_1 .new_btn_8 {
   margin-left: 20px;
 }
+.switt {
+  display: inline-block;
+  overflow: hidden;
+  white-space: nowrap;
+  border-right: 3px solid;
+  animation: typing 3s steps(20) infinite alternate, blink 0.7s infinite step-end;
+}
+
+@keyframes typing {
+  from {
+    width: 0;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+@keyframes blink {
+  50% {
+    border-color: transparent;
+  }
+}
 
 .smaller_h2 {
   color: #22205f;
@@ -1108,12 +1206,15 @@ a {
   justify-content: center;
   align-items: center;
   color: #fff;
+  transition: all .2s ease-in-out;
   margin: 5px;
   border-radius: 100px;
   cursor: pointer;
   background: #22205f;
 }
-
+.new_btn_8:hover{
+  background-color: #f89820;
+}
 .input_split {
   display: flex;
   align-items: center;
@@ -1229,9 +1330,13 @@ a {
   min-width: 450px;
   height: 130px;
   cursor: pointer;
+  transition: all .2s ease-in-out;
   align-items: center;
   margin-bottom: 10px;
   justify-content: space-between;
+}
+.gerald:hover{
+  background-color: #eaeaea;
 }
 
 .gerald h3 {
@@ -1872,7 +1977,12 @@ body {
   width: 60%;
 }
 .entry div h1 {
-  color: #22205f;
+  color: #333;
+  font-size: 16px;
+}
+.entry div p {
+  color: #686868;
+  margin-bottom: 2rem;
 }
 .list_1 img {
   width: 100%;
@@ -2143,7 +2253,7 @@ body {
   .shade {
     height: 50vh;
   }
-  .pt img {
+  .pthold {
     width: 400px;
     height: 300px;
     object-fit: cover;
@@ -2329,6 +2439,12 @@ body {
   right: 20px;
   cursor: pointer;
   top: 20px;
+}
+
+.rating_cont{
+  padding:1rem;
+  background-color: #dbdbdb;
+  border-radius: 10px;
 }
 @media screen and (min-width: 850px) {
   .small_nav {
@@ -2562,13 +2678,29 @@ input[type="range"] {
 .download_btn img {
   width: 150px;
   height: auto;
-  margin-bottom: 10px;
+
+}
+.flexer{
+  display: flex;
+}
+.download_btn {
+  margin-bottom: 0px !important;
+  margin-right: 5px !important;
+  min-width: max-content !important;
 }
 .sa_search_max {
   display: flex;
   width: 100%;
   align-items: center;
   justify-content: space-around;
+}
+.edit{
+  cursor: pointer;
+  transition: all .2s ease-in-out;
+}
+.edit:hover{
+  background-color:#22205f;
+  color:#fff !important;
 }
 .search_item_max {
   height: 60px;
@@ -2612,6 +2744,21 @@ input[type="range"] {
 
 .popover-item:hover {
   background-color: #f0f0f0;
+}
+
+.feedback-message{
+  color: #f89820;
+}
+
+.swi{
+  width: 30px;
+  height: 30px;
+  padding: 10px;
+  background-color: transparent;
+  border: none;
+  font-size: 18px;
+  color: #fff;
+  cursor: pointer;
 }
 
 .search_item_max input {
@@ -2729,6 +2876,7 @@ button {
   background-color: rgba(0, 0, 0, 0.05) !important;
   color: black !important;
 }
+
 .react-datepicker__current-month,
 .react-datepicker-time__header,
 .react-datepicker-year-header {
@@ -2737,6 +2885,7 @@ button {
   font-weight: bold;
   font-size: 0.944rem;
 }
+
 .react-datepicker__navigation {
   padding: 2rem !important;
 }
@@ -2745,9 +2894,11 @@ button {
 .sa_search_2 input {
   width: 100% !important;
 }
+
 .search_item {
   position: relative !important;
 }
+
 .new_max {
   width: 41%;
 }
@@ -2755,6 +2906,7 @@ button {
   min-width: 20rem !important;
   width: 100%;
 }
+
 .value_decision i {
   padding: 5px;
   background-color: #262290;
@@ -2762,21 +2914,43 @@ button {
   margin: 10px;
   border-radius: 5px;
 }
+
 .padding_item {
   padding: 1rem;
 }
+
 .syw {
   margin: 1rem;
 }
+
 .sa_3 img {
   filter: brightness(60%);
   border-radius: 5px;
 }
+
+.vendor_payout{
+  padding: 10px;
+  background-color: #f8972027;
+  max-width: max-content;
+  border-radius: 10px;
+}
+.vendor_payout h4{
+  display: flex;
+  align-items: center;
+}
+.vendor_payout h4 i{
+  font-size: 1.2rem;
+  margin-left: 5px;
+}
 .take_me {
   font-size:1.5rem;
-  color:limegreen;
+  color:#848b8f;
   margin-left:10px;
   cursor:pointer;
+}
+.inline{
+  display: flex;
+  align-items: center;
 }
 .chart-area {
   display: grid;
@@ -2796,4 +2970,93 @@ button {
   font-size: 1.1rem;
   margin-bottom: 0.5rem;
   text-align: center;
+}
+
+.hover_data:hover{
+  color:#22205f;
+  text-decoration: underline;
+  transition: all .2s ease;
+}
+
+.button_hover:hover{
+  background-color:#342edb;
+  transition: all .2s ease;
+}
+.b2:hover{
+  background-color:#342edb;
+  transition: all .2s ease;
+  color:#fff !important;
+  border:none;
+}
+.lnk:hover{
+color:#2e27ff;
+text-decoration: underline;
+transition: all .2s ease;
+}
+.button:hover{
+background-color: #ffa230;
+}
+.receipts-section {
+  margin: 10px 0;
+}
+
+.receipts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 15px;
+  margin-top: 10px;
+}
+
+.receipt-item {
+  cursor: pointer;
+  text-align: center;
+  transition: transform 0.2s;
+}
+
+.receipt-item:hover {
+  transform: scale(1.05);
+}
+
+.receipt-preview {
+  width: 100%;
+  height: 100px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f5f5;
+}
+
+.receipt-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.receipt-preview i {
+  font-size: 40px;
+  color: #e74c3c;
+}
+
+.receipt-name {
+  font-size: 12px;
+  margin-top: 5px;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.image_row{
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.image_row img{
+  width: 100px;
+  height: 100px;
+  margin: 5px;
+  border-radius: 10px;
 }

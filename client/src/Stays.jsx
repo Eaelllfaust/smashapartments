@@ -304,7 +304,7 @@ export default function Stays() {
             <h2>Filter by</h2>
             <br />
             <p>
-              NGN {filters.minPrice || 200} - NGN {filters.maxPrice || 1000}+
+              NGN {filters.minPrice || 10000} - NGN {filters.maxPrice || 300000}+
             </p>
             <br />
             <form action="">
@@ -313,8 +313,8 @@ export default function Stays() {
                 type="range"
                 name="minPrice"
                 value={filters.minPrice || 200}
-                min="200"
-                max="300"
+                min="10000"
+                max="300000"
                 onChange={handlePriceChange}
               />
               <input
@@ -322,8 +322,8 @@ export default function Stays() {
                 type="range"
                 name="maxPrice"
                 value={filters.maxPrice || 1000}
-                min="10"
-                max="1000"
+                min="10000"
+                max="300000"
                 onChange={handlePriceChange}
               />
             </form>
@@ -537,7 +537,7 @@ export default function Stays() {
                 
                 <div className="list_1">
                   <img
-                    src={`http://smashapartments.com/uploads/${listing.images[0]?.media_name}`}
+                    src={`http://localhost:8000/uploads/${listing.images[0]?.media_name}`}
                     alt={listing.property_name}
                   />
                 </div>
@@ -564,7 +564,7 @@ export default function Stays() {
                         <h3>{listing.reviews || "No reviews"}</h3>
                       </div>
                       <div
-                        className="button b3"
+                        className="rating_cont"
                         style={{
                           marginLeft: 10,
                           maxWidth: "50px !important",

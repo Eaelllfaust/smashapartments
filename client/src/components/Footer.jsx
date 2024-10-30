@@ -1,28 +1,27 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
-import { toast } from "react-toastify"; // Make sure React Toastify is installed and configured
+import { toast } from "react-toastify";
 
 export default function Footer() {
   const [email, setEmail] = useState("");
-
   const handleJoinNow = async () => {
+
     if (!email.trim()) {
       toast.error("Please enter your email address.");
       return;
     }
-  
-    // Email validation regex
+
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  
+
     if (!emailPattern.test(email)) {
       toast.error("Please enter a valid email address.");
       return;
     }
-  
+
     try {
       const response = await axios.post("/subscribe", { email });
-  
+
       if (response.data.message) {
         toast.success(response.data.message);
       }
@@ -34,9 +33,6 @@ export default function Footer() {
       }
     }
   };
-  
-  
-
   return (
     <>
       <div className="line" />
@@ -66,87 +62,92 @@ export default function Footer() {
             </div>
           </div>
         </section>
-        <br />
+        <br/>
         <section className="footer">
-          <div>
-            <div className="download_btn"><img src="/assets/getoneplaystore.png" alt="" /></div>
-            <div className="download_btn"><img src="/assets/getoneappstore.png" alt="" /></div>
+          <div className="flexer">
+            <div className="download_btn">
+              <img src="/assets/getoneplaystore.png" alt="" />
+            </div>
+            <div className="download_btn">
+              <img src="/assets/getoneappstore.png" alt="" />
+            </div>
           </div>
           <div>
             <h2>Offers</h2>
-            <Link to="/stays">
+            <Link to="/stays" className="link lnk">
               <p>Properties</p>
             </Link>
-            <Link to="/cooffice">
+            <Link to="/cooffice" className="link lnk">
               <p>Co-office spaces</p>
             </Link>
-            <Link to="/pickups">
+            <Link className="lnk" to="/pickups">
               <p>Airport pickups</p>
             </Link>
-            <Link to="/rentals">
+            <Link className="lnk" to="/rentals">
               <p>Car rentals</p>
             </Link>
           </div>
           <div>
             <h2>Company</h2>
-            <Link to="/aboutus">
+            <Link className="lnk" to="/aboutus">
               <p>About us</p>
             </Link>
-            <Link to="/support">
+            <Link className="lnk" to="/support">
               <p>Contact us</p>
             </Link>
+            <a href="https://www.instagram.com/smashapartments?igsh=NjRveHcwNTY4NHZ0">
+                <img src="/assets/mdi_instagram.svg" alt="" />
+              </a>
           </div>
           <div>
             <h2>Legal</h2>
             <Link
-              target="_blank"
-              to="/assets/SMASH APARTMENTS INTO HOTELS TERMS OF USE.pdf"
+              className="lnk"
+              to="termsofuse"
             >
               <p>Terms of use</p>
             </Link>
-            <Link target="_blank" to="/assets/privacy.pdf">
+            <Link className="lnk"  to="privacypolicy">
               <p>Privacy policy</p>
             </Link>
-            <Link to="/faqs">
+            <Link className="lnk" to="/faqs">
               <p>FAQs</p>
             </Link>
           </div>
           <div>
-            <h2>Social media</h2>
-            <p  className="sm_things">
-         
-              <a href="">
-              <img src="/assets/mdi_instagram.svg" alt="" />
-              </a>
-              <a href="">
-              <img src="/assets/flowbite_x-solid.svg" alt="" />
-              </a>
-              <a href="">
-              <img src="/assets/facebook.svg" alt="" />
-              </a>
-             
-            </p>
-          </div>
-          <div>
             <h2>Support</h2>
             <p>
-              <a href="mailto:hello@smashapartments.com">
+              <a className="lnk" href="mailto:hello@smashapartments.com">
                 hello@smashapartments.com
               </a>
             </p>
             <p>
-              <a href="mailto:support@smashapartments.com">
+              <a className="lnk" href="mailto:support@smashapartments.com">
                 support@smashapartments.com
               </a>
             </p>
             <p>
-              <a href="tel:+23490974303297">+234 909 7430 3297</a>
+              <a className="lnk" href="tel:+23490974303297">
+                +234 909 7430 3297
+              </a>
             </p>
-            <Link to="/listproperty">
+            <Link to="/listproperty" className="only">
               <div className="button b4">List your property</div>
             </Link>
           </div>
-     
+          {/* <div>
+            <h2>Social media</h2>
+            <p className="sm_things">
+             
+              <a href="">
+                <img src="/assets/flowbite_x-solid.svg" alt="" />
+              </a>
+              <a href="">
+                <img src="/assets/facebook.svg" alt="" />
+              </a>
+            </p>
+          </div> */}
+       
         </section>
         <div className="rights">
           Copyright © 2024–2024 Smashapartments.com™. All rights reserved.

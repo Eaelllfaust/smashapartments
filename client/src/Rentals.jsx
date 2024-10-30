@@ -317,7 +317,7 @@ export default function Rentals() {
             {rentals.map((rental) => (
               <div className="list_node" key={rental._id}>
                 <div className="list_1">
-                  <img src={`http://smashapartments.com/uploads/${rental.images[0].media_name}` || "assets/bg (3).png"} alt={rental.carNameModel} />
+                  <img src={`http://localhost:8000/uploads/${rental.images[0].media_name}` || "assets/bg (3).png"} alt={rental.carNameModel} />
                 </div>
                 <div className="list_2">
                   <div className="l22">
@@ -340,7 +340,7 @@ export default function Rentals() {
                         <h3>{rental.reviews || 'No'} reviews</h3>
                       </div>
                       <div
-                        className="button b3"
+                        className="rating_cont"
                         style={{
                           marginLeft: 10,
                           maxWidth: "50px !important",

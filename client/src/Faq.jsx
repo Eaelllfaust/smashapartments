@@ -40,7 +40,7 @@ export default function Faq() {
         <h1>Is there a cost for using the app?</h1>
         <br />
         <p>
-          The SmashApartments app is FREE to use. You only pay for the
+          The Smash apartments app is FREE to use. You only pay for the
           accommodation you book.
         </p>
         <br />
@@ -61,19 +61,19 @@ export default function Faq() {
         <h1>What if I need help during my stay?</h1>
         <br />
         <p>
-          Our customer support team (support@smashapartments.com) is available
+          Our customer support team <a className="href" href='mailto:support@smashapartments.com'>support@smashapartments.com</a> is available
           24/7 to assist you with any issues or questions you may have during your
           stay.
         </p>
         <br />
-        <h1>Where is SmashApartments available?</h1>
+        <h1>Where is Smash apartments available?</h1>
         <br />
         <p>
           Currently, we serve customers across Abuja and Nigeria, with plans to
           expand in the near future.
         </p>
         <br />
-        <h1>Can I list my property on SmashApartments?</h1>
+        <h1>Can I list my property on Smash apartments?</h1>
         <br />
         <p>
           Yes, property owners can list their accommodations on our platform.
@@ -89,8 +89,7 @@ export default function Faq() {
         <h1>What payment methods are accepted?</h1>
         <br />
         <p>
-          We accept major credit/debit cards and various mobile payment options
-          such as Paypal, Flutterwave, available in Nigeria.
+        The only payment method we accept is Paystack.
         </p>
       </div>
     </section>

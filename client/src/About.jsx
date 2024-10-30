@@ -26,7 +26,7 @@ export default function About() {
         <h1>About us</h1>
         <br />
         <p>
-          Welcome to SmashApartments, your go-to app for finding the perfect
+          Welcome to Smash apartments, your go-to app for finding the perfect
           shortlet, hotel, or Airbnb across Abuja and Nigeria. Our mission is to
           connect you with the best and most affordable temporary accommodations
           that meet your needs, whether you’re traveling for business, leisure, or
@@ -35,14 +35,14 @@ export default function About() {
         <br />
         <p>
           With a focus on promptness, convenience, and reliability,
-          SmashApartments leverages advanced technology to source available and
+          Smash apartments leverages advanced technology to source available and
           secured properties closest to you. Our platform is designed with user
           experience in mind, ensuring that booking your stay is quick, easy, and
           secure.
         </p>
         <br />
         <p>
-          At SmashApartments, we are committed to delivering a superior, seamless
+          At Smash apartments, we are committed to delivering a superior, seamless
           service that prioritizes your comfort and satisfaction. Whether you need
           a luxurious hotel room or a cozy shortlet, we’ve got you covered.
         </p>

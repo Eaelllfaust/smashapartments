@@ -175,7 +175,7 @@ export default function ReserveRental() {
               <div className="list_1">
                 <img
                   src={rental.images?.[0]?.url ? 
-                       `https://smashapartments.com/uploads/${rental.images[0].media_name}` : 
+                       `http://localhost:8000/${rental.images[0].url}` : 
                        '/assets/bg (3).png'}
                   alt={rental.carNameModel || 'Car Rental Image'}
                 />
@@ -202,7 +202,7 @@ export default function ReserveRental() {
                       <h3>{rental.reviews || 'No reviews'}</h3>
                     </div>
                     <div
-                      className="button b3"
+                      className="rating_cont"
                       style={{
                         marginLeft: 10,
                         maxWidth: "50px !important",

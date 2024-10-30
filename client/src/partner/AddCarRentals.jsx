@@ -97,21 +97,35 @@ export default function AddCarRentals() {
 
       if (response.data.error) {
         toast.error(response.data.error);
+
       } else {
         toast.success(response.data.message);
         navigate("/partner/managelistings/");
       }
+
     } catch (error) {
+
       console.error("Error submitting form:", error);
-      toast.error(error.response?.data?.error || "An error occurred. Please try again.");
+      toast.error(
+        error.response?.data?.error || "An error occurred. Please try again."
+      );
+
+      if (error.response?.data?.details) {
+        error.response.data.details.forEach((detail) => toast.error(detail));
+      }
+      
     }
   };
 
   return (
     <>
       <div className="shade_2">
-        <h1>Our partner</h1>
-        <img src="/assets/linear_bg.png" className="shade_bg" alt="Background pattern" />
+        <h1>Our vendor</h1>
+        <img
+          src="/assets/linear_bg.png"
+          className="shade_bg"
+          alt="Background pattern"
+        />
         <div className="shade_item">
           <img src="/assets/bg (2).png" alt="Partner image 1" />
         </div>
@@ -140,13 +154,21 @@ export default function AddCarRentals() {
                   <h3>
                     Upload media <i className="bx bx-plus" />
                   </h3>
-                  <p>Upload up to 5 images. 5MB Max.</p>
+                  <p>
+                    Upload up to 15 images, and minimum of 4 images. 8MB Max per
+                    image.
+                  </p>
                 </div>
               </div>
               {selectedImages.map((image, index) => (
-                <div key={index}>
-                  <img src={URL.createObjectURL(image)} alt={`Image ${index + 1}`} />
-                  <button onClick={() => handleImageRemove(index)}>Remove</button>
+                <div key={index} className="image_container">
+                  <img
+                    src={URL.createObjectURL(image)}
+                    alt={`Image ${index + 1}`}
+                  />
+                  <button onClick={() => handleImageRemove(index)}>
+                    Remove
+                  </button>
                 </div>
               ))}
               <input
@@ -267,7 +289,7 @@ export default function AddCarRentals() {
                     value={state.mileage}
                     onChange={handleChange}
                   />
-                  <br />                  <label htmlFor="driver-name">Driver's name</label>
+                  <br /> <label htmlFor="driver-name">Driver's name</label>
                   <br />
                   <input
                     id="driver-name"
@@ -279,7 +301,9 @@ export default function AddCarRentals() {
                     onChange={handleChange}
                   />
                   <br />
-                  <label htmlFor="driver-license-number">Driver's license number</label>
+                  <label htmlFor="driver-license-number">
+                    Driver's license number
+                  </label>
                   <br />
                   <input
                     id="driver-license-number"
@@ -291,7 +315,9 @@ export default function AddCarRentals() {
                     onChange={handleChange}
                   />
                   <br />
-                  <label htmlFor="driver-phone-number">Driver's phone number</label>
+                  <label htmlFor="driver-phone-number">
+                    Driver's phone number
+                  </label>
                   <br />
                   <input
                     id="driver-phone-number"
@@ -395,7 +421,9 @@ export default function AddCarRentals() {
                   <div className="line" />
                   <h3>Policies</h3>
                   <br />
-                  <label htmlFor="cancellation-policy">Cancellation policy</label>
+                  <label htmlFor="cancellation-policy">
+                    Cancellation policy
+                  </label>
                   <br />
                   <textarea
                     id="cancellation-policy"
@@ -476,4 +504,4 @@ export default function AddCarRentals() {
       </section>
     </>
   );
-};
+}

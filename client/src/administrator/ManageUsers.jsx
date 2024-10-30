@@ -109,7 +109,8 @@ export default function ManageUsers() {
           label: 'No',
           onClick: () => {
             // Do nothing on "No"
-          }
+          },
+          className: "noButtonStyle",
         }
       ]
     });

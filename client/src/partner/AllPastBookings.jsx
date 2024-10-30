@@ -5,7 +5,7 @@ export default function AllPastBookings() {
   return (
     <>
   <div className="shade_2">
-    <h1>Our Partner</h1>
+    <h1>Our vendor</h1>
     <img src="/assets/linear_bg.png" className="shade_bg" alt="Background pattern" />
     <div className="shade_item">
       <img src="/assets/bg (2).png" alt="Partner image 1" />

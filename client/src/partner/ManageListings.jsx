@@ -3,8 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { useContext } from "react";
 import { UserContext } from "../../context/userContext";
 import axios from "axios";
-import { confirmAlert } from "react-confirm-alert"; // Import the library
-import "react-confirm-alert/src/react-confirm-alert.css"; // Import the CSS
+import { confirmAlert } from "react-confirm-alert"; 
+import "react-confirm-alert/src/react-confirm-alert.css"; 
 import { toast } from "react-toastify";
 export default function ManageListings() {
   const { user, loading } = useContext(UserContext);
@@ -30,7 +30,6 @@ export default function ManageListings() {
       };
       fetchActiveListingsNum();
 
-      // Fetch active and inactive listings
       const fetchListings = async () => {
         try {
           const activeResponse = await axios.get(`/listings/all/${user._id}`);
@@ -67,7 +66,6 @@ export default function ManageListings() {
               });
               toast.success('Status updated successfully');
   
-              // Optionally, refetch the listings or update the state locally to reflect the changes.
             } catch (error) {
               console.error("Error updating status", error);
               toast.error('Failed to update status. Please try again.');
@@ -77,8 +75,8 @@ export default function ManageListings() {
         {
           label: 'No',
           onClick: () => {
-            // Do nothing on "No"
-          }
+          },
+          className: "noButtonStyle",
         }
       ]
     });
@@ -87,7 +85,7 @@ export default function ManageListings() {
   return (
     <>
       <div className="shade_2">
-        <h1>Our partner</h1>
+        <h1>Our vendor</h1>
         <img src="/assets/linear_bg.png" className="shade_bg" alt="" />
         <div className="shade_item">
           <img src="/assets/bg (2).png" alt="" />
@@ -138,7 +136,7 @@ export default function ManageListings() {
             return (
               <div className="row_item stay" key={listing._id}>
                 <img
-                  src={`https://smashapartments.com/uploads/${listing.images[0].media_name}`}
+                  src={`http://localhost:8000/uploads/${listing.images[0].media_name}`}
                   alt="Stay"
                 />
                 <div>{listing.property_name}</div>
@@ -155,13 +153,14 @@ export default function ManageListings() {
                   <option value="active">active</option>
                   <option value="inactive">inactive</option>
                 </select>
+                <Link to={`editlisting/editstays?id=${listing._id}`} className="select edit">Edit</Link>
               </div>
             );
           } else if (listing.type === "rental") {
             return (
               <div className="row_item rental" key={listing._id}>
                 <img
-                  src={`https://smashapartments.com/uploads/${listing.images[0].media_name}`}
+                  src={`http://localhost:8000/uploads/${listing.images[0].media_name}`}
                   alt="Stay"
                 />
                 <div>{listing.carNameModel}</div>
@@ -184,7 +183,7 @@ export default function ManageListings() {
             return (
               <div className="row_item office" key={listing._id}>
                 <img
-                  src={`https://smashapartments.com/uploads/${listing.images[0].media_name}`}
+                  src={`http://localhost:8000/uploads/${listing.images[0].media_name}`}
                   alt="Stay"
                 />
                 <div>{listing.office_space_name}</div>
@@ -207,7 +206,7 @@ export default function ManageListings() {
             return (
               <div className="row_item service" key={listing._id}>
                 <img
-                  src={`https://smashapartments.com/uploads/${listing.images[0].media_name}`}
+                  src={`http://localhost:8000/uploads/${listing.images[0].media_name}`}
                   alt="Stay"
                 />
                 <div>{listing.serviceName}</div>

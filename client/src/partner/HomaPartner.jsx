@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useContext } from 'react';
 import { UserContext } from '../../context/userContext';
-import axios from 'axios'; // Import axios
+import axios from 'axios';
 
 export default function HomaPartner() {
   const { user, loading } = useContext(UserContext); // Get the user and loading state from context
@@ -13,6 +13,7 @@ export default function HomaPartner() {
   const [earnings, setEarnings] = useState(0);
 
   useEffect(() => {
+   
     if (loading) return;
     if (!user) {
       navigate("/signin");
@@ -55,7 +56,7 @@ export default function HomaPartner() {
   return (
     <>
       <div className="shade_2">
-        <h1>Our partner</h1>
+        <h1>Our vendor</h1>
         <img src="/assets/linear_bg.png" className="shade_bg" alt="" />
         <div className="shade_item">
           <img src="/assets/bg (2).png" alt="" />
@@ -156,7 +157,7 @@ export default function HomaPartner() {
             <p>Update your profile information</p>
             <br />
             <Link to="profilesettings" className="link">
-              Manage personal details
+              Manage payout details
             </Link>
           </div>
           <div className="node_item">

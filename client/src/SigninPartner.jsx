@@ -51,7 +51,7 @@ export default function SigninPartner() {
   return (
     <>
       <div className="shade_2">
-        <h1>Partner signin</h1>
+        <h1>Vendor signin</h1>
         <img src="assets/linear_bg.png" className="shade_bg" alt="" />
         <div className="shade_item">
           <img src="assets/bg (2).png" alt="" />
@@ -68,7 +68,7 @@ export default function SigninPartner() {
       </div>
       <section className="form_area">
         <form onSubmit={handleSubmit}>
-          <h2>Partner account</h2>
+          <h2>Vendor account</h2>
           <br />
           <p>Sign in to list your property, flight, ride, or office space</p>
           <br />
@@ -97,7 +97,7 @@ export default function SigninPartner() {
           <br />
           <br />
           <button type="submit" className="button_5 stick">
-            Proceed as partner
+            Proceed as vendor
           </button>
           <div className="or">OR</div>
           <Link to="/signin">

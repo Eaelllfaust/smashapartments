@@ -9,6 +9,8 @@ import 'react-confirm-alert/src/react-confirm-alert.css'; // Import CSS
 export default function AirportPickups() {
   const { user, loading } = useContext(UserContext);
   const [bookings, setBookings] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const [selectedReceipt, setSelectedReceipt] = useState(null);
 
   useEffect(() => {
     if (loading) return;
@@ -39,6 +41,7 @@ export default function AirportPickups() {
         {
           label: "No",
           onClick: () => console.log("Cancel action aborted"),
+          className: "noButtonStyle",
         },
       ],
     });
@@ -59,6 +62,61 @@ export default function AirportPickups() {
       console.error("Failed to cancel booking:", error);
       toast.error("Failed to cancel booking");
     }
+  };
+
+  const uploadReceipt = (bookingId) => {
+    const fileInput = document.querySelector(`#receipt-${bookingId}`);
+    fileInput.click();
+  };
+
+  const handleFileChange = async (event, bookingId) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Please upload only images or PDF files');
+      return;
+    }
+
+    try {
+      setUploading(true);
+      const formData = new FormData();
+      formData.append('receipt', file);
+      const response = await axios.post(
+        `/uploadreceiptpickup/${bookingId}`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
+      if (response.status === 200) {
+        setBookings(bookings.map(booking => {
+          if (booking._id === bookingId) {
+            return {
+              ...booking,
+              receipts: [...(booking.receipts || []), response.data.receipt]
+            };
+          }
+          return booking;
+        }));
+        toast.success('Receipt uploaded successfully');
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      }
+    } catch (error) {
+      console.error('Failed to upload receipt:', error);
+      toast.error('Failed to upload receipt');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const viewReceipt = (receipt) => {
+    window.open(`http://localhost:8000/${receipt.media_location}`, '_blank');
   };
 
   return (
@@ -120,7 +178,7 @@ export default function AirportPickups() {
                       <div className="info_2">{booking.status}</div>
                     </div>
                     <br />
-                    <br />
+ <br />
                     <h3>More info</h3>
                     <br />
                     <div className="info_data">
@@ -128,13 +186,49 @@ export default function AirportPickups() {
                       <div className="info_2">NGN {booking.totalPrice.toLocaleString()}</div>
                     </div>
                     <br />
-                    {booking.status === "confirmed" && (
-                      <div className="action">
+                    <h3>Receipts</h3>
+                    <br />
+                    <div className="receipts-section">
+                      {booking.receipts && booking.receipts.length > 0 ? (
+                        <div className="receipts-grid">
+                          {booking.receipts.map((receipt, idx) => (
+                            <div 
+                              key={idx} 
+                              className="receipt-item"
+                              onClick={() => viewReceipt(receipt)}
+                            >
+                              <div className="receipt-preview">
+                                <img 
+                                  src={`http://localhost:8000/${receipt.media_location}`}
+                                  alt="Receipt preview"
+                                />
+                              </div>
+                              <span className="receipt-name">{receipt.media_name}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p>No receipts uploaded yet</p>
+                      )}
+                    </div>
+                    <br />
+                    <div className="action">
+                      {booking.status === "confirmed" && (
                         <div className="new_btn_1" onClick={() => handleCancel(booking._id)}>
                           Cancel
                         </div>
+                      )}
+                      <div className="new_btn_2" onClick={() => uploadReceipt(booking._id)} disabled={uploading}>
+                        {uploading ? 'Uploading...' : 'Upload receipt'}
                       </div>
-                    )}
+                      <input 
+                        style={{display: "none"}} 
+                        type="file" 
+                        id={`receipt-${booking._id}`}
+                        onChange={(e) => handleFileChange(e, booking._id)}
+                        accept="image/*,.pdf"
+                      />
+                    </div>
                   </div>
                   <div className="info_second">
                     <div>

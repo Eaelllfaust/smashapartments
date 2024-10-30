@@ -3,12 +3,12 @@ import { UserContext } from "../../context/userContext";
 import axios from "axios";
 import { toast } from "react-toastify";
 import { confirmAlert } from 'react-confirm-alert';
-import 'react-toastify/dist/ReactToastify.css';
 import 'react-confirm-alert/src/react-confirm-alert.css';
 
 export default function OfficeSpaces() {
   const { user, loading } = useContext(UserContext);
   const [bookings, setBookings] = useState([]);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     if (loading) return;
@@ -16,6 +16,7 @@ export default function OfficeSpaces() {
       fetchOfficeSpaces();
     }
   }, [user, loading]);
+
 
   const fetchOfficeSpaces = async () => {
     try {
@@ -27,6 +28,7 @@ export default function OfficeSpaces() {
     }
   };
 
+ 
   const handleCancel = (bookingId) => {
     confirmAlert({
       title: "Confirm to cancel",
@@ -39,10 +41,12 @@ export default function OfficeSpaces() {
         {
           label: "No",
           onClick: () => console.log("Cancel action aborted"),
+          className: "noButtonStyle",
         },
       ],
     });
   };
+
 
   const cancelBooking = async (bookingId) => {
     try {
@@ -59,6 +63,57 @@ export default function OfficeSpaces() {
       console.error("Failed to cancel booking:", error);
       toast.error("Failed to cancel booking");
     }
+  };
+
+
+  const handleFileChange = async (event, bookingId) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Please upload only images or PDF files');
+      return;
+    }
+
+    try {
+      setUploading(true);
+      const formData = new FormData();
+      formData.append('receipt', file);
+
+      const response = await axios.post(
+        `/uploadreceiptoffice/${bookingId}`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
+
+      if (response.status === 200) {
+        setBookings(bookings.map(booking => {
+          if (booking._id === bookingId) {
+            return {
+              ...booking,
+              receipts: [...(booking.receipts || []), response.data.receipt]
+            };
+          }
+          return booking;
+        }));
+        toast.success('Receipt uploaded successfully');
+      }
+    } catch (error) {
+      console.error('Failed to upload receipt:', error);
+      toast.error('Failed to upload receipt');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+
+  const viewReceipt = (receipt) => {
+    window.open(`http://localhost:8000/${receipt.media_location}`, '_blank');
   };
 
   return (
@@ -102,14 +157,9 @@ export default function OfficeSpaces() {
                   <div className="info_intro">
                     <h2>{booking.officeDetails.office_space_name}</h2>
                     <br />
-                    <br />
                     <div className="info_data">
                       <div className="info_1">Location</div>
                       <div className="info_2">{booking.officeDetails.city}, {booking.officeDetails.state_name}</div>
-                    </div>
-                    <div className="info_data">
-                      <div className="info_1">Space type</div>
-                      <div className="info_2">{booking.officeDetails.office_type}</div>
                     </div>
                     <div className="info_data">
                       <div className="info_1">Check in</div>
@@ -124,21 +174,49 @@ export default function OfficeSpaces() {
                       <div className="info_2">{booking.status}</div>
                     </div>
                     <br />
+                    <h3>Receipts</h3>
                     <br />
-                    <h3>More info</h3>
-                    <br />
-                    <div className="info_data">
-                      <div className="info_1">Paid</div>
-                      <div className="info_2">NGN {booking.totalPrice.toLocaleString()}</div>
+                    <div className="receipts-section">
+                      {booking.receipts && booking.receipts.length > 0 ? (
+                        <div className="receipts-grid">
+                          {booking.receipts.map((receipt, idx) => (
+                            <div 
+                              key={idx} 
+                              className="receipt-item"
+                              onClick={() => viewReceipt(receipt)}
+                            >
+                              <div className="receipt-preview">
+                                <img 
+                                  src={`http://localhost:8000/${receipt.media_location}`}
+                                  alt="Receipt preview"
+                                />
+                              </div>
+                              <span className="receipt-name">{receipt.media_name}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p>No receipts uploaded yet</p>
+                      )}
                     </div>
                     <br />
-                    {booking.status === "confirmed" && (
-                      <div className="action">
+                    <div className="action">
+                      {booking.status === "confirmed" && (
                         <div className="new_btn_1" onClick={() => handleCancel(booking._id)}>
                           Cancel
                         </div>
+                      )}
+                      <div className="new_btn_2" onClick={() => document.querySelector(`#receipt-${booking._id}`).click()} disabled={uploading}>
+                        {uploading ? 'Uploading...' : 'Upload receipt'}
                       </div>
-                    )}
+                      <input 
+                        style={{ display: "none" }} 
+                        type="file" 
+                        id={`receipt-${booking._id}`}
+                        onChange={(e) => handleFileChange(e, booking._id)}
+                        accept="image/*,.pdf"
+                      />
+                    </div>
                   </div>
                   <div className="info_second">
                     <div>
@@ -147,11 +225,8 @@ export default function OfficeSpaces() {
                   </div>
                 </div>
                 <br />
-                <br />
                 <div className="contacts">
-                  <h3>
-                    Contact host <i className="bx bx-support" />
-                  </h3>
+                  <h3>Contact host</h3>
                   <br />
                   <div className="info_data">
                     <div className="info_1">Phone</div>

@@ -73,7 +73,7 @@ export default function HomeUser() {
           <div className="node_item">
             <h2>My bookings & reservations</h2>
             <br />
-            <p>Manage your stays, car rentals, airport and co-office spaces bookings.</p>
+            <p>Review and track your previous bookings and stays</p>
             <br />
             <Link to="managebookings" className="link">
               Manage all your bookings
@@ -88,15 +88,7 @@ export default function HomeUser() {
               Manage personal details
             </Link>
           </div>
-          <div className="node_item">
-            <h2>Payment methods <img src="../assets/payment.svg" alt="" /></h2>
-            <br />
-            <p>Securely add or remove payment methods to make it easier for you to book.</p>
-            <br />
-            <Link to="managepayment" className="link">
-              Manage payment details
-            </Link>
-          </div>
+   
           <div className="node_item">
             <h2>Preferences <img src="../assets/preference.svg" alt="" /></h2>
             <br />

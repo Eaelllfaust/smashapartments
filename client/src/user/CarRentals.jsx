@@ -10,6 +10,8 @@ export default function CarRentals() {
   const { user, loading } = useContext(UserContext);
   const navigate = useNavigate();
   const [rentals, setRentals] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const [selectedReceipt, setSelectedReceipt] = useState(null);
 
   useEffect(() => {
     if (loading) return;
@@ -43,7 +45,8 @@ export default function CarRentals() {
         },
         {
           label: 'No',
-          onClick: () => console.log('Cancel action aborted')
+          onClick: () => console.log('Cancel action aborted'),
+          className: "noButtonStyle",
         }
       ]
     });
@@ -62,6 +65,59 @@ export default function CarRentals() {
       console.error('Failed to cancel rental:', error);
       toast.error('Failed to cancel rental');
     }
+  };
+
+  const uploadReceipt = (rentalId) => {
+    const fileInput = document.querySelector(`#receipt-${rentalId}`);
+    fileInput.click();
+  };
+
+  const handleFileChange = async (event, rentalId) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Please upload only images or PDF files');
+      return;
+    }
+
+    try {
+      setUploading(true);
+      var bookingId = rentalId;
+      const formData = new FormData();
+      formData.append('receipt', file);
+      const response = await axios.post(
+        `/uploadreceiptrental/${bookingId}`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
+      if (response.status === 200) {
+        setRentals(rentals.map(rental => {
+          if (rental._id === rentalId) {
+            return {
+              ...rental,
+              receipts: [...(rental.receipts || []), response.data.receipt]
+            };
+          }
+          return rental;
+        }));
+        toast.success('Receipt uploaded successfully');
+      }
+    } catch (error) {
+      console.error('Failed to upload receipt:', error);
+      toast.error('Failed to upload receipt');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const viewReceipt = (receipt) => {
+    window.open(`http://localhost:8000/${receipt.media_location}`, '_blank');
   };
 
   return (
@@ -102,16 +158,15 @@ export default function CarRentals() {
             <div key={index} className='x9'>
               <div className="info">
                 <div className="info_intro">
-                  <h2>{rental.rentalId ? rental.carNameModel : 'Unknown'}</h2>
-                  <br />
+                  <h2>{rental.carNameModel}</h2>
                   <br />
                   <div className="info_data">
                     <div className="info_1">Car name</div>
-                    <div className="info_2">{rental.rentalId ? rental.carNameModel : 'Unknown'}</div>
+                    <div className="info_2">{rental.carNameModel}</div>
                   </div>
                   <div className="info_data">
                     <div className="info_1">Rental date</div>
-                    <div className="info_2">{new Date(rental.pickupDate).toLocaleDateString()} </div>
+                    <div className="info_2">{new Date(rental.pickupDate).toLocaleDateString()}</div>
                   </div>
                   <div className="info_data">
                     <div className="info_1">Pickup</div>
@@ -126,22 +181,54 @@ export default function CarRentals() {
                     <div className="info_2">{rental.status}</div>
                   </div>
                   <br />
-                  <br />
                   <h3>More info</h3>
-                  <br />
                   <div className="info_data">
                     <div className="info_1">Paid</div>
                     <div className="info_2">NGN {rental.totalPrice.toLocaleString()}</div>
                   </div>
                   <div className="action">
-                  {rental.status === 'confirmed' && (
-                          <div className="new_btn_1" onClick={() => handleCancel(rental._id)}>Cancel</div>
-                        )}
+                    {rental.status === 'confirmed' && (
+                      <div className="new_btn_1" onClick={() => handleCancel(rental._id)}>Cancel</div>
+                    )}
+                  </div>
+                  <div className="action">
+                    <div className="new_btn_2" onClick={() => uploadReceipt(rental._id)}>Upload receipt</div>
+                    <input 
+                      style={{ display: "none" }} 
+                      type="file" 
+                      id={`receipt-${rental._id}`}
+                      onChange={(e) => handleFileChange(e, rental._id)}
+                      accept="image/*,.pdf"
+                    />
+                  </div>
+                  <h3>Receipts</h3>
+                  <div className="receipts-section">
+                    {rental.receipts && rental.receipts.length > 0 ? (
+                      <div className="receipts-grid">
+                        {rental.receipts.map((receipt, idx) => (
+                          <div 
+                            key={idx} 
+                            className="receipt-item"
+                            onClick={() => viewReceipt(receipt)}
+                          >
+                            <div className="receipt-preview">
+                              <img 
+                                src={`http://localhost:8000/${receipt.media_location}`} 
+                                alt="Receipt preview"
+                              />
+                            </div>
+                            <span className="receipt-name">{receipt.media_name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p>No receipts uploaded yet</p>
+                    )}
                   </div>
                 </div>
                 <div className="info_second">
                   <div>
-                    <img src={rental.media.length > 0 ? `https://smashapartments.com/uploads/${rental.media[0].media_name}`: '/assets/properties (1).png'} alt="" />
+                    <img src={rental.media.length > 0 ? `http://localhost:8000/uploads/${rental.media[0].media_name}` : '/assets/properties (1).png'} alt="" />
                   </div>
                 </div>
               </div>
@@ -151,11 +238,11 @@ export default function CarRentals() {
                 <br />
                 <div className="info_data">
                   <div className="info_1">Phone</div>
-                  <div className="info_2">{rental.rentalId ? rental.driverPhoneNumber : 'Not provided'}</div>
+                  <div className="info_2">{rental.driverPhoneNumber || 'Not provided'}</div>
                 </div>
                 <div className="info_data">
                   <div className="info_1">Email</div>
-                  <div className="info_2">{rental.rentalId ? rental.driverEmail : 'Not provided'}</div>
+                  <div className="info_2">{rental.driverEmail || 'Not provided'}</div>
                 </div>
               </div>
             </div>

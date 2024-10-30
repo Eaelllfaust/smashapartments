@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { toast } from 'react-toastify'; // Import React Toastify
+import { toast } from 'react-toastify'; 
 
 export default function Cooffice() {
   const location = useLocation();
@@ -390,7 +390,9 @@ export default function Cooffice() {
             {cooffices.map((cooffice) => (
               <div className="list_node" key={cooffice._id}>
                 <div className="list_1">
-                  <img src={cooffice.images?.[0]?.media_name || "assets/bg (1).png"} alt={cooffice.office_space_name} />
+                <img
+                    src={`http://localhost:8000/uploads/${cooffice.images[0]?.media_name}`}
+                  />
                 </div>
                 <div className="list_2">
                   <div className="l22">
@@ -413,7 +415,7 @@ export default function Cooffice() {
                         <h3>{cooffice.reviews || 'No'} reviews</h3>
                       </div>
                       <div
-                        className="button b3"
+                        className="rating_cont"
                         style={{
                           marginLeft: 10,
                           maxWidth: "50px !important",

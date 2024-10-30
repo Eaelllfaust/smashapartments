@@ -102,7 +102,7 @@ export default function Signin() {
           <div className="or">OR</div>
           <Link to="/signinpartner">
             <div className="button nj">
-              Signin as partner
+              Signin as vendor
             </div>
           </Link>
           <br />

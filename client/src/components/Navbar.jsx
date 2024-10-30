@@ -12,7 +12,6 @@ export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // State for the current language and flag
   const [currentLanguage, setCurrentLanguage] = useState({
     name: "English",
     flag: "/assets/uk-flag.gif",
@@ -31,13 +30,11 @@ export default function Navbar() {
     setModalOpen(!isModalOpen);
   };
 
-  // Function to set the initial language from the Google Translate dropdown
   const setInitialLanguage = () => {
     const selectField = document.querySelector(".goog-te-combo");
     if (selectField) {
       const selectedLang = selectField.value.toLowerCase();
 
-      // Find a matching language based on the Google Translate value
       const matchingLanguage = languages.find((lang) =>
         lang.name.toLowerCase().includes(selectedLang)
       );
@@ -49,18 +46,20 @@ export default function Navbar() {
   };
 
   useEffect(() => {
+setTimeout(() => {
+  if(user.interface == "partner"){
+   document.querySelector(".only").style.display = "none";
+  }
+}, 1000);
     const observer = new MutationObserver(() => {
       const selectField = document.querySelector(".goog-te-combo");
       if (selectField) {
-        setInitialLanguage(); // Set the initial language when dropdown is available
-        observer.disconnect(); // Stop observing once the dropdown is found
+        setInitialLanguage(); 
+        observer.disconnect(); 
       }
     });
 
-    // Start observing the document body for changes (subtree includes all child elements)
     observer.observe(document.body, { childList: true, subtree: true });
-
-    // Cleanup observer on component unmount
     return () => {
       observer.disconnect();
     };
@@ -69,8 +68,6 @@ export default function Navbar() {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [location.pathname]);
-
-  // Redirect user based on account type
   const handleAccountRedirect = () => {
     if (user?.interface) {
       if (user.interface === "admin") {
@@ -82,12 +79,11 @@ export default function Navbar() {
       }
     }
   };
-
-  // Handle user logout
   const handleLogout = async () => {
     confirmAlert({
       title: "Confirm to Logout",
       message: "Are you sure you want to logout?",
+      
       buttons: [
         {
           label: "Yes",
@@ -100,16 +96,15 @@ export default function Navbar() {
         {
           label: "No",
           onClick: () => {},
+             className: "noButtonStyle",
         },
       ],
     });
   };
-
-  // Callback to handle when a new language is selected from the modal
   const handleLanguageChange = (language) => {
     const matchingLanguage = languages.find((lang) => lang.name === language);
     if (matchingLanguage) {
-      setCurrentLanguage(matchingLanguage); // Update the flag and language
+      setCurrentLanguage(matchingLanguage); 
     }
   };
 
@@ -120,12 +115,10 @@ export default function Navbar() {
     const menuIcon = document.querySelector(".bx-menu");
     const closeIcon = document.querySelector(".bx-x");
     const smallNav = document.querySelector(".small_nav");
-
     if (leftButton && rightButton && rowMain) {
       rightButton.addEventListener("click", () => {
         rowMain.scrollBy({ left: 200, behavior: "smooth" });
       });
-
       leftButton.addEventListener("click", () => {
         rowMain.scrollBy({ left: -200, behavior: "smooth" });
       });
@@ -140,7 +133,6 @@ export default function Navbar() {
         smallNav.classList.remove("open");
       });
     }
-
     return () => {
       if (smallNav.className.includes("open")) {
         smallNav.classList.remove("open");
@@ -149,14 +141,12 @@ export default function Navbar() {
         menuIcon.removeEventListener("click", () => {});
         closeIcon.removeEventListener("click", () => {});
       }
-
       if (leftButton && rightButton) {
         leftButton.removeEventListener("click", () => {});
         rightButton.removeEventListener("click", () => {});
       }
     };
   });
-
   return (
     <nav>
       <Link to="/">
@@ -167,31 +157,30 @@ export default function Navbar() {
       </Link>
       <div className="nav_flex">
         <div className="b1 bbb bbbb" onClick={toggleModal}>
-          {/* Display the current flag */}
+          {}
           <img className="switch_flag" src={currentLanguage.flag} alt="" />
         </div>
-        <Link to="/support" className="b1 bbb">
+        <Link to="/support" className="b1 bbb hover_data">
           Help center
         </Link>
-
         {!user ? (
           <>
             <Link className="b1" to="/listproperty">
-              <div className="">List your property</div>
+              <div className="hover_data">List your property</div>
             </Link>
             <Link className="b1" to="/signin">
-              <div className="mpp0">Sign in</div>
+              <div className="mpp0 hover_data">Sign in</div>
             </Link>
             <Link className="b1" to="/createaccount">
-              <div className="button  b2">Create account</div>
+              <div className="button  b2 button_hover">Create account</div>
             </Link>
           </>
         ) : (
           <>
-            <div className="b1 bbb" onClick={handleAccountRedirect}>
+            <div className="b1 bbb hover_text" onClick={handleAccountRedirect}>
               My account
             </div>
-            <div className="b1" onClick={handleLogout}>
+            <div className="b1 hover_text" onClick={handleLogout}>
               Logout
             </div>
           </>
@@ -255,7 +244,7 @@ export default function Navbar() {
         isOpen={isModalOpen}
         onClose={toggleModal}
         languages={languages}
-        onLanguageChange={handleLanguageChange} // Pass the callback to modal
+        onLanguageChange={handleLanguageChange}
       />
     </nav>
   );

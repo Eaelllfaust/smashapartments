@@ -1,11 +1,13 @@
 const User = require("../models/user");
 const { hashPassword, comparePassword } = require("../helpers/auth");
 const jwt = require("jsonwebtoken");
+const mongoose = require("mongoose");
 const PaymentMethod = require("../models/payment_method");
 const StayListing = require("../models/stays_listing");
 const LikedItem = require("../models/likeditem");
 const Service = require("../models/service");
 const OfficeSpace = require("../models/cooffice");
+const Receipts = require("../models/receipts");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
@@ -41,17 +43,7 @@ const sender = {
 const test = (req, res) => {
   res.json("test is working");
 };
-const payoutDetails = async (req, res) => {
-  try {
-    const payout = await Payout.findOne({ userId: req.params.userId });
-    if (!payout) {
-      return res.status(404).json({ message: 'Payout details not found' });
-    }
-    res.json(payout);
-  } catch (error) {
-    res.status(500).json({ message: 'Error fetching payout details', error: error.message });
-  }
-};
+
 const updateStatus = async (req, res) => {
   const { type, id, status } = req.body;
 
@@ -109,7 +101,17 @@ const updateStatus = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
-
+const payoutDetails = async (req, res) => {
+  try {
+    const payout = await Payout.findOne({ userId: req.params.userId });
+    if (!payout) {
+      return res.status(404).json({ message: 'Payout details not found' });
+    }
+    res.json(payout);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching payout details', error: error.message });
+  }
+};
 const updatePayoutSettings = async (req, res) => {
   const { token } = req.cookies;
 
@@ -249,6 +251,7 @@ const getCurrentOfficeSpaces = async (req, res) => {
   try {
     const { userId } = req.params;
 
+    // Fetch office space bookings with certain statuses
     const bookings = await CoofficeBooking.find({
       userId,
       status: { $in: ["confirmed", "reserved", "cancelled", "ended"] },
@@ -260,38 +263,50 @@ const getCurrentOfficeSpaces = async (req, res) => {
         .json({ error: "No office spaces found for this user" });
     }
 
+    // Fetch associated office details, media tags, and receipts for each booking
     const bookingsWithDetails = await Promise.all(
       bookings.map(async (booking) => {
         try {
+          // Fetch office details
           const officeDetails = await OfficeSpace.findById(
             booking.officeId
           ).lean();
 
+          // Fetch media tags
           const mediaTags = await MediaTag.find({
             listing_id: booking.officeId,
           }).lean();
 
+          // Fetch receipts associated with the booking
+          const receipts = await Receipts.find({
+            booking_id: booking._id
+          }).lean();
+
+          // Return booking with office details, media tags, and receipts
           return {
             ...booking,
             officeDetails,
             mediaTags,
+            receipts, // Include receipts in the response
           };
         } catch (err) {
           console.error(
             `Error fetching details for booking ${booking._id}:`,
             err
           );
-          return booking;
+          return booking; // Return booking without details if there's an error
         }
       })
     );
 
+    // Respond with bookings that include detailed info
     res.status(200).json(bookingsWithDetails);
   } catch (error) {
     console.error("Error fetching user office spaces:", error);
     res.status(500).json({ error: "Failed to fetch user office spaces" });
   }
 };
+
 
 const cancelService = async (req, res) => {
   const { bookingId } = req.params; // Extract bookingId from the request parameters
@@ -746,7 +761,7 @@ const getPickups = async (req, res) => {
       .lean();
 
     if (pickups.length === 0) {
-      // If no pickups are found, fetch without filters
+
       pickups = await Service.find()
         .skip(Number(offset) || 0)
         .limit(Number(limit) || 10)
@@ -777,48 +792,50 @@ const getCurrentPickups = async (req, res) => {
     }).lean();
 
     if (!pickups.length) {
-      return res
-        .status(404)
-        .json({ error: "No airport pickups found for this user" });
+      return res.status(404).json({ error: "No airport pickups found for this user" });
     }
-    // Fetch associated service details and media for each pickup
+
+    // Fetch associated service details, media, and receipts for each pickup
     const pickupsWithDetails = await Promise.all(
       pickups.map(async (pickup) => {
         try {
           // Fetch service details
-          const serviceDetails = await Service.findById(
-            pickup.serviceId
-          ).lean();
+          const serviceDetails = await Service.findById(pickup.serviceId).lean();
+          
           // Fetch associated media
-          const media = await MediaTag.find({
-            listing_id: pickup.serviceId,
+          const media = await MediaTag.find({ listing_id: pickup.serviceId }).lean();
+
+          // Fetch receipts based on pickup's booking ID
+          const receipts = await Receipts.find({
+            booking_id: pickup._id
           }).lean();
-          // Return pickup with service details and media
+
+          // Return pickup with service details, media, and receipts
           return {
             ...pickup,
             serviceDetails,
             media, // Include media in the response
-            driverPhoneNumber:
-              serviceDetails?.driverPhoneNumber || "Not provided",
+            receipts, // Include receipts in the response
+            driverPhoneNumber: serviceDetails?.driverPhoneNumber || "Not provided",
             driverEmail: serviceDetails?.driverEmail || "Not provided",
             carMakeModel: serviceDetails?.carMakeModel || "Unknown",
             carColor: serviceDetails?.carColor || "Unknown",
           };
         } catch (err) {
-          console.error(
-            `Error fetching details for pickup ${pickup._id}:`,
-            err
-          );
+          console.error(`Error fetching details for pickup ${pickup._id}:`, err);
           return pickup; // Return pickup with default values if there's an error
         }
       })
     );
+    
     res.status(200).json(pickupsWithDetails);
   } catch (error) {
     console.error("Error fetching user pickups:", error);
     res.status(500).json({ error: "Failed to fetch user pickups" });
   }
 };
+
+
 const getCoOfficeData = async (req, res) => {
   try {
     const { id } = req.params; // Get cooffice ID from request parameters
@@ -852,7 +869,7 @@ const getCurrentRentals = async (req, res) => {
   try {
     const { userId } = req.params;
 
-    // Fetch rentals with status 'confirmed' or 'reserved'
+    // Fetch rentals with status 'confirmed', 'reserved', 'cancelled', or 'ended'
     const rentals = await Rental.find({
       userId,
       status: { $in: ["confirmed", "reserved", "cancelled", "ended"] },
@@ -874,7 +891,10 @@ const getCurrentRentals = async (req, res) => {
             listing_id: rental.rentalId,
           }).lean();
 
-          // Return rental with car rental details and media
+          // Fetch uploaded receipts for this rental
+          const receipts = await Receipts.find({ booking_id: rental._id }).lean();
+
+          // Return rental with car rental details, media, and receipts
           return {
             ...rental,
             carRentalDetails: carRental,
@@ -882,6 +902,7 @@ const getCurrentRentals = async (req, res) => {
             driverPhoneNumber: carRental?.driverPhoneNumber || "Not provided",
             driverEmail: carRental?.driverEmail || "Not provided",
             carNameModel: carRental?.carNameModel || "Unknown",
+            receipts, // Add receipts to the rental details
           };
         } catch (err) {
           console.error(
@@ -904,33 +925,40 @@ const getCurrentBookings = async (req, res) => {
   try {
     const { userId } = req.params;
 
-    // Fetch bookings with status 'confirmed' or 'reserved'
     const bookings = await Booking.find({
       userId,
+
       status: { $in: ["confirmed", "reserved", "cancelled", "ended"] },
+
     }).lean();
 
     if (!bookings.length) {
       return res.status(404).json({ error: "No bookings found for this user" });
     }
 
-    // Fetch associated media and stay listing details for each booking
+   
     const bookingsWithDetails = await Promise.all(
       bookings.map(async (booking) => {
         try {
-          // Fetch associated media
+         
           const media = await MediaTag.find({
             listing_id: booking.listingId,
           }).lean();
 
-          // Fetch stay listing details
+     
           const stayListing = await StayListing.findById(
             booking.listingId
           ).lean();
 
+      
+          const receipts = await Receipts.find({
+            booking_id: booking._id
+          }).lean();
+
           return {
             ...booking,
             media,
+            receipts,
             property_name: stayListing?.property_name || "Unknown",
             city: stayListing?.city || "Unknown",
             state_name: stayListing?.state_name || "Unknown",
@@ -942,7 +970,7 @@ const getCurrentBookings = async (req, res) => {
             `Error fetching details for booking ${booking._id}:`,
             err
           );
-          return booking; // Return booking with default values if there's an error
+          return booking; 
         }
       })
     );
@@ -958,7 +986,7 @@ const getUserBookings = async (req, res) => {
   try {
     const { userId } = req.params;
 
-    // Fetch total bookings and reserved bookings from all schemas
+   
     const [
       totalBookingCount,
       totalCoofficeCount,
@@ -1583,66 +1611,109 @@ const getAllBookingsGeneral = async (req, res) => {
   try {
     const { userId } = req.params;
 
-    const stayListings = await StayListing.find().select("_id").lean();
-    const officeSpaces = await OfficeSpace.find().select("_id").lean();
-    const carRentals = await CarRental.find().select("_id").lean();
-    const services = await Service.find().select("_id").lean();
+    // Fetch all listings with their owners
+    const stayListings = await StayListing.find().lean();
+    const officeSpaces = await OfficeSpace.find().lean();
+    const carRentals = await CarRental.find().lean();
+    const services = await Service.find().lean();
 
-    const stayListingIds = stayListings.map((listing) => listing._id);
-    const officeSpaceIds = officeSpaces.map((listing) => listing._id);
-    const carRentalIds = carRentals.map((listing) => listing._id);
-    const serviceIds = services.map((listing) => listing._id);
+    // Create maps of listings by their IDs
+    const stayListingMap = stayListings.reduce((acc, listing) => {
+      acc[listing._id] = listing;
+      return acc;
+    }, {});
+    const officeSpaceMap = officeSpaces.reduce((acc, listing) => {
+      acc[listing._id] = listing;
+      return acc;
+    }, {});
+    const carRentalMap = carRentals.reduce((acc, listing) => {
+      acc[listing._id] = listing;
+      return acc;
+    }, {});
+    const serviceMap = services.reduce((acc, listing) => {
+      acc[listing._id] = listing;
+      return acc;
+    }, {});
 
+    // Collect all owner IDs
+    const ownerIds = [
+      ...stayListings.map(listing => listing.owner),
+      ...officeSpaces.map(listing => listing.owner),
+      ...carRentals.map(listing => listing.owner),
+      ...services.map(listing => listing.owner)
+    ];
+    const uniqueOwnerIds = [...new Set(ownerIds)];
+
+    // Fetch all bookings
     const stayBookings = await Booking.find({
-      listingId: { $in: stayListingIds },
+      listingId: { $in: stayListings.map(listing => listing._id) }
     }).lean();
     const officeBookings = await CoofficeBooking.find({
-      officeId: { $in: officeSpaceIds },
+      officeId: { $in: officeSpaces.map(listing => listing._id) }
     }).lean();
     const rentalBookings = await Rental.find({
-      rentalId: { $in: carRentalIds },
+      rentalId: { $in: carRentals.map(listing => listing._id) }
     }).lean();
     const serviceBookings = await ServiceBooking.find({
-      serviceId: { $in: serviceIds },
+      serviceId: { $in: services.map(listing => listing._id) }
     }).lean();
 
+    // Collect all user IDs from bookings
     const userIds = [
-      ...stayBookings.map((booking) => booking.userId),
-      ...officeBookings.map((booking) => booking.userId),
-      ...rentalBookings.map((booking) => booking.userId),
-      ...serviceBookings.map((booking) => booking.userId),
+      ...stayBookings.map(booking => booking.userId),
+      ...officeBookings.map(booking => booking.userId),
+      ...rentalBookings.map(booking => booking.userId),
+      ...serviceBookings.map(booking => booking.userId)
     ];
-
     const uniqueUserIds = [...new Set(userIds)];
 
-    const users = await User.find({ _id: { $in: uniqueUserIds } }).lean();
+    // Fetch users and payouts in parallel
+    const [users, ownerPayouts] = await Promise.all([
+      User.find({ _id: { $in: uniqueUserIds } }).lean(),
+      Payout.find({ userId: { $in: uniqueOwnerIds } }).lean()
+    ]);
 
+    // Create maps for users and payouts
     const userMap = users.reduce((acc, user) => {
       acc[user._id] = user;
       return acc;
     }, {});
 
+    const payoutMap = ownerPayouts.reduce((acc, payout) => {
+      acc[payout.userId] = payout;
+      return acc;
+    }, {});
+
+    // Combine all bookings with user and owner payout information
     const allBookings = [
       ...stayBookings.map((booking) => ({
         ...booking,
         type: "stay",
         user: userMap[booking.userId],
+        listing: stayListingMap[booking.listingId],
+        ownerPayout: payoutMap[stayListingMap[booking.listingId].owner] || null
       })),
       ...officeBookings.map((booking) => ({
         ...booking,
         type: "office",
         user: userMap[booking.userId],
+        listing: officeSpaceMap[booking.officeId],
+        ownerPayout: payoutMap[officeSpaceMap[booking.officeId].owner] || null
       })),
       ...rentalBookings.map((booking) => ({
         ...booking,
         type: "rental",
         user: userMap[booking.userId],
+        listing: carRentalMap[booking.rentalId],
+        ownerPayout: payoutMap[carRentalMap[booking.rentalId].owner] || null
       })),
       ...serviceBookings.map((booking) => ({
         ...booking,
         type: "service",
         user: userMap[booking.userId],
-      })),
+        listing: serviceMap[booking.serviceId],
+        ownerPayout: payoutMap[serviceMap[booking.serviceId].owner] || null
+      }))
     ];
 
     res.status(200).json(allBookings);
@@ -1651,7 +1722,6 @@ const getAllBookingsGeneral = async (req, res) => {
     res.status(500).json({ error: "Failed to fetch bookings" });
   }
 };
-
 const getUpcomingBookings = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -2406,19 +2476,18 @@ const likeProperty = async (req, res) => {
 
 const getListingData = async (req, res) => {
   try {
-    const { id } = req.params; // Get listing ID from request parameters
+    const { id } = req.params;
 
-    // Fetch listing data by ID
+
     const listing = await StayListing.findById(id).lean();
 
     if (!listing) {
       return res.status(404).json({ error: "Listing not found" });
     }
 
-    // Fetch associated images
     const images = await MediaTag.find({ listing_id: id }).lean();
 
-    // Combine listing data with images and construct image URLs
+
     const listingWithImages = {
       ...listing,
       images: images.map((image) => ({
@@ -2519,7 +2588,7 @@ const getCooffices = async (req, res) => {
     const coofficesWithImages = await Promise.all(
       cooffices.map(async (cooffice) => {
         const images = await MediaTag.find({
-          office_space_id: cooffice._id,
+          listing_id: cooffice._id,
         }).lean();
         return { ...cooffice, images };
       })
@@ -2592,7 +2661,7 @@ const getListings = async (req, res) => {
 
     // Add filter for ratings
     if (ratings) filters.ratings = Number(ratings);
-
+  filters.status = "active";
     let listings = await StayListing.find(filters)
       .skip(offset) // Skip the first 'offset' listings
       .limit(limit) // Limit the number of listings to 'limit'
@@ -2600,7 +2669,9 @@ const getListings = async (req, res) => {
 
     if (listings.length === 0) {
       // If no listings are found, fetch without filters
-      listings = await StayListing.find().skip(offset).limit(limit).lean();
+      listings = await StayListing.find({
+        status: "active",
+      }).skip(offset).limit(limit).lean();
     }
 
     const listingsWithImages = await Promise.all(
@@ -2625,7 +2696,198 @@ const storage = multer.diskStorage({
     cb(null, Date.now() + path.extname(file.originalname));
   },
 });
+
 const upload = multer({ storage: storage });
+
+const uploadReceipt = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'];
+    if (!allowedTypes.includes(req.file.mimetype)) {
+
+      fs.unlinkSync(req.file.path);
+      return res.status(400).json({ error: "Invalid file type. Only images and PDFs are allowed." });
+    }
+
+    const bookingId = req.params.bookingId;
+    
+    const booking = await Booking.findById(bookingId);
+    if (!booking) {
+ 
+      fs.unlinkSync(req.file.path);
+      return res.status(404).json({ error: "Booking not found" });
+    }
+
+    const receipt = new Receipts({
+      booking_id: bookingId,
+      media_name: req.file.filename,
+      media_location: req.file.path
+    });
+
+    await receipt.save();
+
+    res.status(200).json({
+      message: "Receipt uploaded successfully",
+      receipt: {
+        id: receipt._id,
+        filename: receipt.media_name
+      }
+    });
+  } catch (error) {
+    // Clean up uploaded file if there's an error
+    if (req.file) {
+      fs.unlinkSync(req.file.path);
+    }
+    console.error("Error uploading receipt:", error);
+    res.status(500).json({ error: "Failed to upload receipt" });
+  }
+};
+const uploadReceiptPickup = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'];
+    if (!allowedTypes.includes(req.file.mimetype)) {
+      // Delete the invalid file
+      fs.unlinkSync(req.file.path);
+      return res.status(400).json({ error: "Invalid file type. Only images and PDFs are allowed." });
+    }
+
+    const bookingId = req.params.bookingId;
+    
+    // Verify booking exists
+    const booking = await ServiceBooking.findById(bookingId);
+    if (!booking) {
+      // Delete the uploaded file if booking doesn't exist
+      fs.unlinkSync(req.file.path);
+      return res.status(404).json({ error: "Booking not found" });
+    }
+
+    // Create new receipt record
+    const receipt = new Receipts({
+      booking_id: bookingId,
+      media_name: req.file.filename,
+      media_location: req.file.path
+    });
+
+    await receipt.save();
+
+    res.status(200).json({
+      message: "Receipt uploaded successfully",
+      receipt: {
+        id: receipt._id,
+        filename: receipt.media_name
+      }
+    });
+  } catch (error) {
+    if (req.file) {
+      fs.unlinkSync(req.file.path);
+    }
+    console.error("Error uploading receipt:", error);
+    res.status(500).json({ error: "Failed to upload receipt" });
+  }
+};
+const uploadReceiptOffice = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'];
+    if (!allowedTypes.includes(req.file.mimetype)) {
+
+      fs.unlinkSync(req.file.path);
+      return res.status(400).json({ error: "Invalid file type. Only images and PDFs are allowed." });
+    }
+
+    const bookingId = req.params.bookingId;
+    
+
+    const booking = await CoofficeBooking.findById(bookingId);
+    if (!booking) {
+    
+      fs.unlinkSync(req.file.path);
+      return res.status(404).json({ error: "Booking not found" });
+    }
+
+    const receipt = new Receipts({
+      booking_id: bookingId,
+      media_name: req.file.filename,
+      media_location: req.file.path
+    });
+
+    await receipt.save();
+
+    res.status(200).json({
+      message: "Receipt uploaded successfully",
+      receipt: {
+        id: receipt._id,
+        filename: receipt.media_name
+      }
+    });
+  } catch (error) {
+   
+    if (req.file) {
+      fs.unlinkSync(req.file.path);
+    }
+    console.error("Error uploading receipt:", error);
+    res.status(500).json({ error: "Failed to upload receipt" });
+  }
+};
+
+const uploadReceiptRental = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'];
+    if (!allowedTypes.includes(req.file.mimetype)) {
+      fs.unlinkSync(req.file.path); 
+      return res.status(400).json({ error: "Invalid file type. Only images and PDFs are allowed." });
+    }
+
+    const bookingId = req.params.bookingId;
+    
+   
+    const booking = await Rental.findById(bookingId);
+    if (!booking) {
+      fs.unlinkSync(req.file.path); 
+      return res.status(404).json({ error: "Booking not found" });
+    }
+
+    // Create new receipt record
+    const receipt = new Receipts({
+      booking_id: bookingId,
+      media_name: req.file.filename,
+      media_location: req.file.path // Ensure this points to the correct location
+    });
+
+    await receipt.save();
+
+    res.status(200).json({
+      message: "Receipt uploaded successfully",
+      receipt: {
+        id: receipt._id,
+        media_name: receipt.media_name,
+        media_location: receipt.media_location // Return the path to the uploaded file
+      }
+    });
+  } catch (error) {
+    // Clean up uploaded file if there's an error
+    if (req.file) {
+      fs.unlinkSync(req.file.path);
+    }
+    console.error("Error uploading receipt:", error);
+    res.status(500).json({ error: "Failed to upload receipt" });
+  }
+};
 
 const createRental = async (req, res) => {
   try {
@@ -2690,6 +2952,14 @@ const createRental = async (req, res) => {
       validationErrors.push("Rental price is required");
     if (!parsedBody.insurance) validationErrors.push("Insurance is required");
     if (!parsedBody.fuel) validationErrors.push("Fuel is required");
+
+        
+    if (!req.files || req.files.length < 4 || req.files.length > 15) {
+      validationErrors.push(
+        `Please upload between 4 and 15 images. You uploaded ${req.files ? req.files.length : 0}.`
+      );
+    }
+
     if (validationErrors.length > 0) {
       return res
         .status(400)
@@ -2727,8 +2997,7 @@ const createRental = async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 };
-
-const createStayListing = async (req, res) => {
+const updateListing = async (req, res) => {
   try {
     const { token } = req.cookies;
     if (!token) {
@@ -2741,7 +3010,13 @@ const createStayListing = async (req, res) => {
       return res.status(404).json({ error: "User not found" });
     }
 
-    // Parse and validate fields
+    const { id } = req.params;
+    const existingListing = await StayListing.findById(id);
+    if (!existingListing) {
+      return res.status(404).json({ error: "Listing not found" });
+    }
+
+    // Parse form data for updating fields
     const parsedBody = {
       property_name: req.body.propertyName,
       city: req.body.city,
@@ -2757,6 +3032,167 @@ const createStayListing = async (req, res) => {
       contact_name: req.body.contactName,
       contact_phone: req.body.contactPhone,
       contact_email: req.body.contactEmail,
+      security_levy: req.body.securityDeposit,
+      cancellation_policy: req.body.cancellationPolicy,
+      refund_policy: req.body.refundPolicy,
+      wifi: req.body.wifi === "true",
+      pool: req.body.pool === "true",
+      parking: req.body.parking === "true",
+      gym: req.body.gym === "true",
+      pets: req.body.pets === "true",
+      smoking: req.body.smoking === "true",
+      meals: req.body.meals === "true",
+      cleaning: req.body.cleaning === "true",
+      weekly_discount: parseFloat(req.body.weeklyDiscount),
+      monthly_discount: parseFloat(req.body.monthlyDiscount),
+    };
+
+    // Start a session for transaction
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      // Update the listing
+      Object.assign(existingListing, parsedBody);
+      await existingListing.save({ session });
+
+ // Handle existing images
+const existingImages = req.body.existingImages;
+// Ensure we always have an array, even with a single image
+const existingImageUrls = Array.isArray(existingImages) 
+  ? existingImages 
+  : existingImages ? [existingImages] : [];
+
+// Get current media tags
+const currentMediaTags = await MediaTag.find({ listing_id: id });
+
+// Find media tags to delete (those not in existingImageUrls)
+const toDelete = currentMediaTags.filter(
+  (tag) => !existingImageUrls.includes(tag.media_location)
+);
+
+// Delete only the removed media tags
+if (toDelete.length > 0) {
+  await MediaTag.deleteMany(
+    { 
+      listing_id: id,
+      media_location: { $in: toDelete.map(tag => tag.media_location) }
+    },
+    { session }
+  );
+}
+
+// Handle new images - Keep existing images and add new ones
+if (req.files && req.files.length > 0) {
+  const newMediaTags = req.files.map(file => ({
+    listing_id: existingListing._id,
+    media_name: file.filename,
+    media_location: file.path,
+    size: file.size,
+  }));
+
+  await MediaTag.insertMany(newMediaTags, { session });
+}
+
+      // Commit the transaction
+      await session.commitTransaction();
+
+      // Get updated listing with all images
+      const updatedMediaTags = await MediaTag.find({ listing_id: id });
+      
+      res.status(200).json({
+        message: "Stay listing updated successfully",
+        stay_listing: {
+          ...existingListing.toObject(),
+          images: updatedMediaTags.map(tag => ({
+            location: tag.media_location,
+            name: tag.media_name
+          }))
+        }
+      });
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      session.endSession();
+    }
+  } catch (error) {
+    console.error("Error updating stay listing:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+
+
+const getStayListing = async (req, res) => {
+  try {
+    const { token } = req.cookies;
+    if (!token) {
+      return res.status(401).json({ error: "No token provided" });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findOne({ email: decoded.email });
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const listingId = req.params.id;
+    const stayListing = await StayListing.findById(listingId).lean();
+    if (!stayListing) {
+      return res.status(404).json({ error: "Stay listing not found" });
+    }
+
+    // Fetch related images
+    const mediaTags = await MediaTag.find({ listing_id: listingId });
+    const images = mediaTags.map((media) => ({
+      name: media.media_name,
+      location: media.media_location,
+      size: media.size,
+    }));
+
+    res.status(200).json({
+      message: "Stay listing fetched successfully",
+      stayListing: {
+        ...stayListing,
+        images,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching stay listing:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+const createStayListing = async (req, res) => {
+  try {
+    const { token } = req.cookies;
+    if (!token) {
+      return res.status(401).json({ error: "No token provided" });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findOne({ email: decoded.email });
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const parsedBody = {
+      property_name: req.body.propertyName,
+      city: req.body.city,
+      state_name: req.body.state_name,
+      property_type: req.body.propertyType,
+      description: req.body.propertyDescription,
+      number_of_rooms: parseInt(req.body.numRooms),
+      number_of_bathrooms: parseInt(req.body.numBathrooms),
+      maximum_occupancy: parseInt(req.body.maxOccupancy),
+      price_per_night: parseFloat(req.body.pricePerNight),
+      available_from: new Date(req.body.availableFrom),
+      available_to: new Date(req.body.availableTo),
+      contact_name: req.body.contactName,
+      contact_phone: req.body.contactPhone,
+      contact_email: req.body.contactEmail,
+      security_levy: req.body.securityDeposit,
       cancellation_policy: req.body.cancellationPolicy,
       refund_policy: req.body.refundPolicy,
       wifi: req.body.wifi === "true",
@@ -2772,7 +3208,6 @@ const createStayListing = async (req, res) => {
       owner: user._id,
     };
 
-    // Validate parsed data
     const validationErrors = [];
     if (isNaN(parsedBody.number_of_rooms))
       validationErrors.push("Invalid number of rooms");
@@ -2791,6 +3226,13 @@ const createStayListing = async (req, res) => {
     if (isNaN(parsedBody.monthly_discount))
       validationErrors.push("Invalid monthly discount");
 
+    
+    if (!req.files || req.files.length < 4 || req.files.length > 15) {
+      validationErrors.push(
+        `Please upload between 4 and 15 images. You uploaded ${req.files ? req.files.length : 0}.`
+      );
+    }
+
     if (validationErrors.length > 0) {
       return res
         .status(400)
@@ -2801,6 +3243,7 @@ const createStayListing = async (req, res) => {
 
     await newStayListing.save();
 
+    // Saving uploaded images
     if (req.files && req.files.length > 0) {
       for (const file of req.files) {
         const mediaTag = new MediaTag({
@@ -2830,6 +3273,7 @@ const createStayListing = async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
 
 const createOfficeListing = async (req, res) => {
   try {
@@ -2871,6 +3315,7 @@ const createOfficeListing = async (req, res) => {
       contact_name: req.body.contactName,
       contact_phone: req.body.contactPhone,
       contact_email: req.body.contactEmail,
+      security_levy: req.body.securityDeposit,
       owner: user._id,
     };
 
@@ -2889,6 +3334,12 @@ const createOfficeListing = async (req, res) => {
       validationErrors.push("Invalid available from date");
     if (isNaN(parsedBody.available_to.getTime()))
       validationErrors.push("Invalid available to date");
+
+    if (!req.files || req.files.length < 4 || req.files.length > 15) {
+      validationErrors.push(
+        `Please upload between 4 and 15 images. You uploaded ${req.files ? req.files.length : 0}.`
+      );
+    }
 
     if (validationErrors.length > 0) {
       return res
@@ -3284,7 +3735,7 @@ const loginUser = async (req, res) => {
         interface: "user", // Add 'interface': 'user' to the JWT payload
       },
       process.env.JWT_SECRET,
-      
+
       {},
       async (err, token) => {
         if (err) throw err;
@@ -3353,12 +3804,12 @@ const loginPartner = async (req, res) => {
 
         // Send login notification email
         const loginTime = new Date().toLocaleString();
-        try {
-          await sendLoginEmail(user.email, loginTime);
-        } catch (emailError) {
-          console.error("Error sending login notification email:", emailError);
-          // Continue with login process even if email fails
-        }
+       try {
+         await sendLoginEmail(user.email, loginTime);
+       } catch (emailError) {
+         console.error("Error sending login notification email:", emailError);
+       
+       }
 
         res.cookie("token", token).json(user);
       }
@@ -3440,6 +3891,7 @@ const logoutUser = (req, res) => {
 };
 
 const createService = async (req, res) => {
+
   try {
     const { token } = req.cookies;
     if (!token) {
@@ -3487,6 +3939,12 @@ const createService = async (req, res) => {
     if (isNaN(parsedBody.availableTo.getTime()))
       validationErrors.push("Invalid available to date");
 
+    if (!req.files || req.files.length < 4 || req.files.length > 15) {
+      validationErrors.push(
+        `Please upload between 4 and 15 images. You uploaded ${req.files ? req.files.length : 0}.`
+      );
+    }
+
     if (validationErrors.length > 0) {
       return res
         .status(400)
@@ -3507,11 +3965,12 @@ const createService = async (req, res) => {
         await mediaTag.save();
       }
     }
-
     res
       .status(201)
       .json({ message: "Service created successfully", service: newService });
-  } catch (error) {
+  
+    } catch (error) {
+
     console.error("Error creating service:", error);
     if (error.name === "ValidationError") {
       const validationErrors = Object.values(error.errors).map(
@@ -3522,8 +3981,12 @@ const createService = async (req, res) => {
         .json({ error: "Validation failed", details: validationErrors });
     }
     res.status(500).json({ error: "Internal server error" });
+
   }
+
 };
+
+
 const getFullProfile = async (req, res) => {
   const { token } = req.cookies; // Make sure token is set in cookies
 
@@ -3873,4 +4336,10 @@ module.exports = {
   bookingData,
   payoutDetails,
   upload,
+  uploadReceipt,
+  uploadReceiptPickup,
+  uploadReceiptRental,
+  uploadReceiptOffice,
+  getStayListing,
+  updateListing
 };

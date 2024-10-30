@@ -86,7 +86,7 @@ export default function PersonalInfo() {
   return (
     <>
       <div className="shade_2">
-        <h1>Our partner</h1>
+        <h1>Our vendor</h1>
         <img src="/assets/linear_bg.png" className="shade_bg" alt="" />
         <div className="shade_item">
           <img src="/assets/bg (2).png" alt="" />

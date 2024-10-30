@@ -82,7 +82,8 @@ export default function ManageBookings() {
                 booking._id === bookingId ? { ...booking } : booking
               )
             );
-          }
+          },
+          className: "noButtonStyle",
         }
       ]
     });
@@ -90,7 +91,7 @@ export default function ManageBookings() {
   return (
     <>
       <div className="shade_2">
-        <h1>Our partner</h1>
+        <h1>Our vendor</h1>
         <img
           src="../assets/linear_bg.png"
           className="shade_bg"

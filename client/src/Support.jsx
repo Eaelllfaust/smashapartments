@@ -20,6 +20,10 @@ export default function Support() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if(complaint == ""){
+      toast.error("Please fill the form");
+      return;
+    }
     try {
       const userId = user ? user._id : 'general';
       await axios.post('/complaints', {
@@ -59,14 +63,15 @@ export default function Support() {
         </div>
       </section>
       <br />
-      <section className="form_area2">
+      <section className="form_area">
         <div className="form div">
-          <h1>Smash Apartments help center</h1>
+          <h1>Help center</h1>
           <br />
           <label htmlFor="text">
             Tell us about any issues you may be experiencing on our platform, and
-            any ways you think we can help
+            any ways you think we can help. You can also reach us at <a href="support@smashapartments.com" className='href'>support@smashapartments.com</a>
           </label>
+          <br />
           <br />
           <textarea
             className="textarea"
@@ -74,7 +79,7 @@ export default function Support() {
             value={complaint}
             onChange={(e) => setComplaint(e.target.value)}
           />
-          <button className="button b2 stick" type="submit" onClick={handleSubmit}>
+          <button className="button b2" type="submit" onClick={handleSubmit}>
             Submit
           </button>
         </div>
