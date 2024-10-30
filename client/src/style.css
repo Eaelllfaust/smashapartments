@@ -2617,19 +2617,11 @@ body {
   min-width: 100% !important;
 }
 
-input[type="date"]::-webkit-calendar-picker-indicator {
-  background-image: url("/assets/radio-circle-regular-60.png") !important;
-}
 
-input[type="number"]::-webkit-outer-spin-button,
-input[type="number"]::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
 
-input[type="number"] {
-  -moz-appearance: textfield;
-}
+
+
+
 .react-confirm-alert-overlay {
   z-index: 9999 !important; /* Increase the z-index */
 }
