@@ -44,7 +44,7 @@ export const ImageRow = ({ images, onImageClick }) => {
       {images.slice(0, 3).map((image, index) => (
         <GridImage
           key={index}
-          src={`https://smashapartments.com/${image.url}`}
+          src={`https://smashapartments.com${image.url}`}
           alt="Property Image"
           onClick={() => onImageClick(index)}
         />
@@ -190,7 +190,7 @@ export const Modal = ({
         </Header>
         <CarouselContainer>
           <CarouselImage 
-            src={`https://smashapartments.com/${images[currentImageIndex].url}`} 
+            src={`https://smashapartments.com${images[currentImageIndex].url}`} 
             alt="Property"
           />
           <NavigationButton position="left" onClick={handlePrev}>

@@ -108,7 +108,7 @@ export default function StaysDetails() {
               <div className="list_1">
                 <img
                   src={listing.images?.[0]?.url ? 
-                       `https://smashapartments.com/${listing.images[0].url}` : 
+                       `https://smashapartments.com${listing.images[0].url}` : 
                        '/assets/properties (2).png'}
                   alt={listing.property_name || 'Property Image'}
                 />
