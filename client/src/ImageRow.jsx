@@ -44,7 +44,7 @@ export const ImageRow = ({ images, onImageClick }) => {
       {images.slice(0, 3).map((image, index) => (
         <GridImage
           key={index}
-          src={`http://localhost:8000/${image.url}`}
+          src={`https://smashapartments.com/${image.url}`}
           alt="Property Image"
           onClick={() => onImageClick(index)}
         />
