@@ -440,7 +440,7 @@ export default function Pickups() {
                 <div className="list_1">
                   <img
                     src={
-                      `http://localhost:8000/uploads/${pickup.images?.[0]?.media_name}` ||
+                      `https://smashapartments.com/uploads/${pickup.images?.[0]?.media_name}` ||
                       "/assets/bg (4).png"
                     }
                     alt={pickup.serviceName}
