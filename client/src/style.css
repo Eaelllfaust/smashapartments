@@ -2548,7 +2548,13 @@ body {
   .l54 {
     flex-direction: column;
   }
-
+  .switt {
+    display: inline-block;
+    overflow: hidden;
+    white-space: wrap;
+    border-right: none;
+  animation: none;
+  }
   .l33 > div:nth-child(2) {
     margin-top: 20px;
   }
@@ -2616,11 +2622,6 @@ body {
 .button_5 {
   min-width: 100% !important;
 }
-
-
-
-
-
 
 .react-confirm-alert-overlay {
   z-index: 9999 !important; /* Increase the z-index */
