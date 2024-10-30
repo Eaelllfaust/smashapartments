@@ -453,7 +453,7 @@ export default function Home() {
               <div className="list_node" key={listing._id}>
                 <div className="list_1">
                   <img
-                    src={`http://localhost:8000/uploads/${listing.images[0]?.media_name}`}
+                    src={`https://smashapartments.com/uploads/${listing.images[0]?.media_name}`}
                     alt={listing.property_name}
                   />
                 </div>
