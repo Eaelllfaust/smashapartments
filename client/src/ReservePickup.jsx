@@ -121,7 +121,7 @@ export default function ReservePickup() {
   return (
     <>
       <div className="shade_2 df">
-        <h1>Search for airport pickups</h1>
+        <h1>Search for pickups</h1>
         <p>From budget rides to luxury cars and everything in between</p>
         <img
           src="/assets/linear_bg.png"
