@@ -10,7 +10,7 @@ import Footer from "./components/Footer";
 import Home from "./Home";
 import ListProperty from "./ListProperty";
 import CreateAccount from "./CreateAccount";
-import Signin from "./signin";
+import Signin from "./Signin";
 import PartnerDetails from "./PartnerDetails";
 import PartnerPassword from "./PartnerPassword";
 import Stays from "./Stays";
@@ -95,7 +95,7 @@ import Recovery from "./Recovery";
 import SigninAdmin from "./SiginAdmin";
 import Privacy from "./Privacy";
 import TermsOfUse from "./Termsofuse";
-import Editstays from "./partner/editstays";
+import Editstays from "./partner/Editstays";
 
 axios.defaults.baseURL = "https://smashapartments.com/";
 axios.defaults.withCredentials = true;
