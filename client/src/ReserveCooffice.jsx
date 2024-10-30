@@ -172,7 +172,7 @@ export default function ReserveCooffice() {
                 <div className="list_1">
                 <img
                   src={officeDetails.images?.[0]?.url ? 
-                       `https:/smashapartments.com/uploads/${officeDetails.images[0].media_name}` : 
+                       `https://smashapartments.com/uploads/${officeDetails.images[0].media_name}` : 
                        '/assets/bg (1).png'}
                   alt={officeDetails.property_name || 'Cooffice Image'}
                 />
