@@ -230,7 +230,7 @@ export default function Editstays() {
               <div className="image_preview">
     {images.existing.map((image, index) => (
       <div key={`existing-${index}`} className="image_container">
-        <img src={`http://localhost:8000/${image.url}`} alt={`existing preview ${index}`} />
+        <img src={`https://smashapartments.com/${image.url}`} alt={`existing preview ${index}`} />
         <button 
           type="button" 
           onClick={() => handleImageRemove(index, 'existing')}
