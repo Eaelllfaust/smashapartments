@@ -190,7 +190,7 @@ export const Modal = ({
         </Header>
         <CarouselContainer>
           <CarouselImage 
-            src={`http://localhost:8000/${images[currentImageIndex].url}`} 
+            src={`https://smashapartments.com/${images[currentImageIndex].url}`} 
             alt="Property"
           />
           <NavigationButton position="left" onClick={handlePrev}>
