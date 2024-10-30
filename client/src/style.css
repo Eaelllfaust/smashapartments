@@ -483,6 +483,11 @@ input {
     min-width: 70% !important;
   }
 }
+
+.padding_item {
+  padding: 1rem;
+}
+
 .bx-menu {
   font-size: 1.5rem;
   display: none;
@@ -2068,6 +2073,14 @@ body {
   .b1 {
     display: none;
   }
+  .level {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px;
+    padding-bottom: 0px !important;
+    padding-top: 0px !important;
+  }
 }
 .row_item {
   margin-bottom: 20px;
@@ -2594,6 +2607,9 @@ body {
   .h89 {
     width: 100%;
   }
+  .padding_item {
+    padding: 0rem;
+  }
 }
 .l54 h3 {
   margin-bottom: 10px;
@@ -2906,10 +2922,6 @@ button {
   color: white !important;
   margin: 10px;
   border-radius: 5px;
-}
-
-.padding_item {
-  padding: 1rem;
 }
 
 .syw {
