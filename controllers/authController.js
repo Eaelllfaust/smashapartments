@@ -2690,13 +2690,12 @@ const getListings = async (req, res) => {
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, "uploads/");
+    cb(null, "/uploads");
   },
   filename: function (req, file, cb) {
     cb(null, Date.now() + path.extname(file.originalname));
   },
 });
-
 const upload = multer({ storage: storage });
 
 const uploadReceipt = async (req, res) => {
