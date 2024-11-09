@@ -99,7 +99,7 @@ export default function ReservePickup() {
     // Proceed with payment
     const paystack = new window.PaystackPop();
     paystack.newTransaction({
-      key: "pk_test_aa805fbdf79594d452dd669b02148a98482bae70", // Replace with your public key
+      key: "pk_live_4b0f48fb37a18ddc2f5514ad7b93a1d094f3dda4", // Replace with your public key
       amount: finalPrice * 100, // Amount in kobo
       email: user.email,
       onSuccess: (transaction) => {

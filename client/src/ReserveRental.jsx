@@ -140,7 +140,7 @@ export default function ReserveRental() {
 
     const paystack = new window.PaystackPop();
     paystack.newTransaction({
-      key: "pk_test_aa805fbdf79594d452dd669b02148a98482bae70",
+      key: "pk_live_4b0f48fb37a18ddc2f5514ad7b93a1d094f3dda4",
       amount: Math.round(totalPrice * 100),
       email: user.email,
       onSuccess: (transaction) => {
