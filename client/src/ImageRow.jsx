@@ -1,6 +1,6 @@
 // ImageRow.jsx
-import React, { useState } from 'react';
-import styled from 'styled-components';
+import React, { useState } from "react";
+import styled from "styled-components";
 
 const ImageGrid = styled.div`
   display: grid;
@@ -29,7 +29,7 @@ const ViewAllOverlay = styled.div`
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  height:200px;
+  height: 200px;
   font-size: 1.2rem;
   font-weight: 600;
   transition: background-color 0.2s;
@@ -89,7 +89,7 @@ const Header = styled.div`
   justify-content: space-between;
   align-items: center;
   padding: 20px;
-  background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.8), transparent);
   color: white;
   z-index: 2;
 `;
@@ -130,7 +130,7 @@ const NavigationButton = styled.button`
     background: rgba(255, 255, 255, 0.2);
   }
 
-  ${props => props.position === 'left' ? 'left: 20px;' : 'right: 20px;'}
+  ${(props) => (props.position === "left" ? "left: 20px;" : "right: 20px;")}
 `;
 
 const StyledButton = styled.button`
@@ -141,13 +141,16 @@ const StyledButton = styled.button`
   cursor: pointer;
   transition: all 0.2s;
 
-  ${props => props.variant === 'primary' ? `
+  ${(props) =>
+    props.variant === "primary"
+      ? `
     background: #007AFF;
     color: white;
     &:hover {
       background: #0056b3;
     }
-  ` : `
+  `
+      : `
     background: rgba(255, 255, 255, 0.1);
     color: white;
     &:hover {
@@ -156,14 +159,14 @@ const StyledButton = styled.button`
   `}
 `;
 
-export const Modal = ({ 
-  images, 
-  isOpen, 
-  onClose, 
-  title, 
-  onReserveClick, 
-  currentImageIndex, 
-  setCurrentImageIndex 
+export const Modal = ({
+  images,
+  isOpen,
+  onClose,
+  title,
+  onReserveClick,
+  currentImageIndex,
+  setCurrentImageIndex,
 }) => {
   const handleNext = () => {
     setCurrentImageIndex((prev) => (prev + 1) % images.length);
@@ -184,14 +187,12 @@ export const Modal = ({
             <StyledButton variant="primary" onClick={onReserveClick}>
               Reserve
             </StyledButton>
-            <StyledButton onClick={onClose}>
-              Close
-            </StyledButton>
+            <StyledButton onClick={onClose}>Close</StyledButton>
           </div>
         </Header>
         <CarouselContainer>
-          <CarouselImage 
-            src={`http://localhost:8000/${images[currentImageIndex].url}`} 
+          <CarouselImage
+            src={`https://smashapartments.com/uploads/${images[currentImageIndex].media_name}`}
             alt="Property"
           />
           <NavigationButton position="left" onClick={handlePrev}>
