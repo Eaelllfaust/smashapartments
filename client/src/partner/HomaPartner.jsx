@@ -157,7 +157,7 @@ export default function HomaPartner() {
             <p>Update your profile information</p>
             <br />
             <Link to="profilesettings" className="link">
-              Manage payout details
+              Manage payout & personal details
             </Link>
           </div>
           <div className="node_item">

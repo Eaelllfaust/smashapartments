@@ -462,21 +462,22 @@ export default function Home() {
                     <div>
                       <div style={{ display: "flex", alignItems: "center" }}>
                         <h2>{listing.property_name}</h2>
-                        {/* <div className="star_holder">
-                          <i className="bx bx-star" />
-                          <i className="bx bx-star" />
-                          <i className="bx bx-star" />
-                          <i className="bx bx-star" />
-                        </div> */}
+                        <div className="star_holder">
+                          {[...Array(5)].map((_, i) => (
+                            <i key={i} className={`bx bx-star ${i < Math.floor(listing.averageRating || 0) ? 'bxs-star' : ''}`} />
+                          ))}
+                        </div>
                       </div>
                       <h3 className="small_1" style={{ marginTop: 10 }}>
                         {listing.city}, {listing.state_name}
+                        
                       </h3>
+                    
                     </div>
                     <div style={{ display: "flex", alignItems: "center" }}>
-                      <div className="n94">
-                        <h3>{listing.ratings >= 4.5 ? "Excellent" : "Good"}</h3>
-                        <h3>{listing.reviews || "No reviews"}</h3>
+                    <div className="n94">
+                        <h3>{listing.averageRating >= 4.5 ? "Excellent" : "Good"}</h3>
+                        <h3>{listing.reviewCount || "No "} reviews</h3>
                       </div>
                       <div
                         className="rating_cont"
@@ -486,7 +487,7 @@ export default function Home() {
                           minWidth: "100px !important",
                         }}
                       >
-                        {listing.ratings || "N/A"}
+                        {listing.averageRating || "N/A"} <i className="bx bxs-star"></i>
                       </div>
                     </div>
                   </div>

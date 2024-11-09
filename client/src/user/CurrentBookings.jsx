@@ -5,9 +5,25 @@ import { UserContext } from "../../context/userContext";
 import axios from "axios";
 import { confirmAlert } from "react-confirm-alert";
 import { toast } from "react-toastify";
-import "react-confirm-alert/src/react-confirm-alert.css"; 
-
+import "react-confirm-alert/src/react-confirm-alert.css";
+import ReviewModal from "./ReviewModal";
 export default function CurrentBookings() {
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [selectedBookingId, setSelectedBookingId] = useState(null);
+  const [selectedListingId, setSelectedListingId] = useState(null);
+
+  const openReviewModal = (bookingId, listingId) => {
+    setSelectedBookingId(bookingId);
+    setSelectedListingId(listingId);
+    setShowReviewModal(true);
+  };
+
+  const closeReviewModal = () => {
+    setShowReviewModal(false);
+    setSelectedBookingId(null);
+    setSelectedListingId(null);
+  };
+
   const [uploading, setUploading] = useState(false);
   const [selectedReceipt, setSelectedReceipt] = useState(null);
 
@@ -20,49 +36,56 @@ export default function CurrentBookings() {
     const file = event.target.files[0];
     if (!file) return;
 
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'];
+    const allowedTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/gif",
+      "application/pdf",
+    ];
     if (!allowedTypes.includes(file.type)) {
-      toast.error('Please upload only images or PDF files');
+      toast.error("Please upload only images or PDF files");
       return;
     }
 
     try {
       setUploading(true);
       const formData = new FormData();
-      formData.append('receipt', file);
+      formData.append("receipt", file);
       const response = await axios.post(
         `/uploadreceipt/${bookingId}`,
         formData,
         {
           headers: {
-            'Content-Type': 'multipart/form-data',
+            "Content-Type": "multipart/form-data",
           },
         }
       );
       if (response.status === 200) {
-        setBookings(bookings.map(booking => {
-          if (booking._id === bookingId) {
-            return {
-              ...booking,
-              receipts: [...(booking.receipts || []), response.data.receipt]
-            };
-          }
-          return booking;
-        }));
-        toast.success('Receipt uploaded successfully');
+        setBookings(
+          bookings.map((booking) => {
+            if (booking._id === bookingId) {
+              return {
+                ...booking,
+                receipts: [...(booking.receipts || []), response.data.receipt],
+              };
+            }
+            return booking;
+          })
+        );
+        toast.success("Receipt uploaded successfully");
         setTimeout(() => {
           window.location.reload();
         }, 1500);
       }
     } catch (error) {
-      console.error('Failed to upload receipt:', error);
-      toast.error(error.response?.data?.error || 'Failed to upload receipt');
+      console.error("Failed to upload receipt:", error);
+      toast.error(error.response?.data?.error || "Failed to upload receipt");
     } finally {
       setUploading(false);
     }
   };
   const viewReceipt = (receipt) => {
-    window.open(`https://smashapartments.com/${receipt.media_location}`, '_blank');
+    window.open(`https://smashapartments.com/uploads/${receipt.media_name}`, "_blank");
   };
   const { user, loading } = useContext(UserContext);
   const navigate = useNavigate();
@@ -86,6 +109,7 @@ export default function CurrentBookings() {
       console.error("Failed to fetch bookings:", error);
     }
   };
+
   const handleCancel = (bookingId) => {
     confirmAlert({
       title: "Confirm to cancel",
@@ -103,6 +127,12 @@ export default function CurrentBookings() {
       ],
     });
   };
+
+  const isCancellable = (createdAt) => {
+    const oneHour = 60 * 60 * 1000;
+    return new Date() - new Date(createdAt) < oneHour;
+  };
+
   const cancelBooking = async (bookingId) => {
     try {
       const response = await axios.post(`/cancelbooking/${bookingId}`);
@@ -118,9 +148,12 @@ export default function CurrentBookings() {
       }
     } catch (error) {
       console.error("Failed to cancel booking:", error);
-      toast.error("Failed to cancel booking");
+      const errorMessage =
+        error.response?.data?.message || "Failed to cancel booking";
+      toast.error(errorMessage);
     }
   };
+
   return (
     <>
       <div className="shade_2">
@@ -160,27 +193,27 @@ export default function CurrentBookings() {
                 <div key={index} className="x9">
                   <div className="info">
                     <div className="info_intro">
-                    <br />
+                      <br />
                       <h3>Receipts</h3>
                       <br />
                       <div className="receipts-section">
                         {booking.receipts && booking.receipts.length > 0 ? (
                           <div className="receipts-grid">
                             {booking.receipts.map((receipt, idx) => (
-                              <div 
-                                key={idx} 
+                              <div
+                                key={idx}
                                 className="receipt-item"
                                 onClick={() => viewReceipt(receipt)}
                               >
                                 <div className="receipt-preview">
-                               
-                                    <img 
-                                      src={`https://smashapartments.com/${receipt.media_location}`}
-                                      alt="Receipt preview"
-                                    />
-                                 
+                                  <img
+                                    src={`https://smashapartments.com/uploads/${receipt.media_name}`}
+                                    alt="Receipt preview"
+                                  />
                                 </div>
-                                <span className="receipt-name">{receipt.media_name}</span>
+                                <span className="receipt-name">
+                                  {receipt.media_name}
+                                </span>
                               </div>
                             ))}
                           </div>
@@ -188,9 +221,7 @@ export default function CurrentBookings() {
                           <p>No receipts uploaded yet</p>
                         )}
                       </div>
-                  
-                 
-                    
+
                       <h2>{booking.property_name}</h2>
                       <br />
                       <br />
@@ -236,31 +267,42 @@ export default function CurrentBookings() {
                       </div>
                       <br />
                       <div className="action">
-                        {booking.status === "confirmed" && (
-                          <div
-                            className="new_btn_1"
-                            onClick={() => handleCancel(booking._id)}
-                          >
-                            Cancel
-                          </div>
-                        )}
+                        {booking.status === "confirmed" &&
+                          isCancellable(booking.createdAt) && (
+                            <div
+                              className="new_btn_1"
+                              onClick={() => handleCancel(booking._id)}
+                            >
+                              Cancel
+                            </div>
+                          )}
                       </div>
                       <div className="action">
-                      <div 
-  className="new_btn_2" 
-  onClick={() => uploadReceipt(booking._id)}
-  disabled={uploading}
->
-  {uploading ? 'Uploading...' : 'Upload receipt'}
-</div>
+                        <div
+                          className="new_btn_2"
+                          onClick={() => uploadReceipt(booking._id)}
+                          disabled={uploading}
+                        >
+                          {uploading ? "Uploading..." : "Upload receipt"}
+                        </div>
                       </div>
-                      <input 
-  style={{display: "none"}} 
-  type="file" 
-  id={`receipt-${booking._id}`}
-  onChange={(e) => handleFileChange(e, booking._id)}
-  accept="image/*,.pdf"
-/>
+                      <div className="action">
+                        <div
+                          className="new_btn_2"
+                          onClick={() =>
+                            openReviewModal(booking._id, booking.listingId)
+                          }
+                        >
+                          Review and rate
+                        </div>
+                      </div>
+                      <input
+                        style={{ display: "none" }}
+                        type="file"
+                        id={`receipt-${booking._id}`}
+                        onChange={(e) => handleFileChange(e, booking._id)}
+                        accept="image/*,.pdf"
+                      />
                     </div>
                     <div className="info_second">
                       <div>
@@ -294,6 +336,14 @@ export default function CurrentBookings() {
               ))
             ) : (
               <p>No current bookings found.</p>
+            )}
+            {showReviewModal && (
+              <ReviewModal
+                userId={user._id}
+                bookingId={selectedBookingId}
+                listingId={selectedListingId}
+                onClose={closeReviewModal}
+              />
             )}
           </div>
         </section>

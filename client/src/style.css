@@ -1,5 +1,5 @@
 :root {
-  --font-size-14: 14px;
+  --font-size-14: 8px;
   --font-size-16: 16px;
   --font-size-24: 24px;
   --font-size-30: 30px;
@@ -105,7 +105,7 @@ h3{
 body {
   font-family: "Montserrat", sans-serif;
   font-weight: 600;
-  font-size: 14px;
+  font-size: 12px;
 }
 
 nav {
@@ -1480,6 +1480,7 @@ display: block;
   background: #f0f0f0;
   border: none;
   display: flex;
+  cursor: pointer;
   text-align: center;
   align-items: center;
   justify-content: center;
@@ -2453,11 +2454,18 @@ body {
   cursor: pointer;
   top: 20px;
 }
-
+.note{
+  background-color:#ffd9ab;
+  padding: 10px;
+  width: max-content;
+  border-radius: 30px;
+  cursor: pointer;
+}
 .rating_cont{
   padding:1rem;
-  background-color: #dbdbdb;
+  background-color:#ffba65;
   border-radius: 10px;
+  color:#000000;
 }
 @media screen and (min-width: 850px) {
   .small_nav {
@@ -2700,8 +2708,9 @@ input[type="range"] {
 .sa_search_max {
   display: flex;
   width: 100%;
-  align-items: center;
-  justify-content: space-around;
+  align-items:center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
 }
 .edit{
   cursor: pointer;
@@ -3064,4 +3073,64 @@ background-color: #ffa230;
   height: 100px;
   margin: 5px;
   border-radius: 10px;
+}
+.approved{
+  background-color: limegreen;
+  color: #fff;
+}
+.bx-check{
+  font-size: 1.2rem;
+  margin-left:5px;
+}
+.input-group{
+  display: flex;
+  align-items: center;
+}
+.h89 button{
+  margin: 5px;
+  outline: none;
+  height: 40px;
+  color: #fff;
+  width: 40px;
+  border: none;
+  cursor: pointer;
+  float: right;
+  border-radius: 5px;
+  font-size: 1.5rem;
+  background-color: #f89820;
+}
+.ruin{
+  display: flex;
+align-items:flex-end;
+justify-content: flex-end;
+}
+.valid{
+  color: green;
+}
+
+li{
+  list-style: none;
+}
+.password-helper{
+  padding: 10px;
+  border-radius: 10px;
+  background-color: #eeeeee;
+}
+.n2d div{
+  margin-bottom: 10px;
+}
+.action_item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #f9f9f9;
+  padding: 12px;
+  margin-bottom: 10px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+}
+
+.action_item p {
+  margin: 0;
+  font-size: 16px;
 }

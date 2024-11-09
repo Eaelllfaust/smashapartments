@@ -91,7 +91,7 @@ export default function RentalDetails() {
               <div className="list_1">
                 <img
                   src={rental.images?.[0]?.url ? 
-                       `https://smashapartments.com${rental.images[0].url}` : 
+                       `https://smashapartments.com/uploads/${rental.images[0].media_name}` : 
                        '/assets/bg (3).png'}
                   alt={rental.carNameModel || 'Car Rental Image'}
                 />
@@ -102,10 +102,17 @@ export default function RentalDetails() {
                     <div style={{ display: "flex", alignItems: "center" }}>
                       <h2>{rental.carNameModel}</h2>
                       <div className="star_holder">
-                        {[...Array(5)].map((_, index) => (
-                          <i className={`bx bx-star ${index < (rental.ratings || 0) ? 'filled' : ''}`} key={index} />
-                        ))}
-                      </div>
+                          {[...Array(5)].map((_, i) => (
+                            <i
+                              key={i}
+                              className={`bx bx-star ${
+                                i < Math.floor(rental.averageRating || 0)
+                                  ? "bxs-star"
+                                  : ""
+                              }`}
+                            />
+                          ))}
+                        </div>
                     </div>
                     <h3 className="small_1" style={{ marginTop: 10 }}>
                       {rental.location}
@@ -113,18 +120,24 @@ export default function RentalDetails() {
                   </div>
                   <div style={{ display: "flex", alignItems: "center" }}>
                     <div className="n94">
-                      <h3>{rental.ratings >= 4.5 ? 'Excellent' : 'Good'}</h3>
-                      <h3>{rental.reviews || 'No reviews'}</h3>
+                      <h3>
+                        {rental.averageRating >= 4.5 ? "Excellent" : "Good"}
+                      </h3>
+                      <h3>
+                        {rental.reviewCount
+                          ? `${rental.reviewCount} reviews`
+                          : "No reviews"}
+                      </h3>
                     </div>
                     <div
                       className="rating_cont"
                       style={{
                         marginLeft: 10,
                         maxWidth: "50px !important",
-                        minWidth: "100px !important"
+                        minWidth: "100px !important",
                       }}
                     >
-                      {rental.ratings || 'N/A'}
+                      {rental.averageRating || "N/A"} <i className="bx bxs-star"></i>
                     </div>
                   </div>
                 </div>

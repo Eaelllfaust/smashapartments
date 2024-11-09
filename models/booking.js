@@ -15,7 +15,7 @@ const bookingSchema = new mongoose.Schema({
   paymentReference: { type: String, required: true },
   status: {
     type: String,
-    enum: ["pending", "confirmed", "reserved", "cancelled", "cancelledbyparnter", "cancelledbyadmin", "ended"],
+    enum: ["pending", "confirmed", "reserved", "cancelled", "cancelledbyparnter", "cancelledbyadmin", "ended", "checkedin"],
     default: "pending",
   },
   createdAt: { type: Date, default: Date.now },

@@ -1,8 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
-import { toast } from 'react-toastify'; 
-
+import { toast } from "react-toastify";
 
 const airports = [
   {
@@ -89,7 +88,7 @@ const airports = [
 ];
 
 export default function Pickups() {
- const location = useLocation();
+  const location = useLocation();
   const navigate = useNavigate();
   const [pickups, setPickups] = useState([]);
   const [initialPickups, setInitialPickups] = useState([]);
@@ -119,9 +118,14 @@ export default function Pickups() {
     const fetchPickups = async () => {
       try {
         const response = await axios.get("/getpickups", {
-          params: { limit: 5, offset: 0, airport: airportParam, destination: destinationParam },
+          params: {
+            limit: 5,
+            offset: 0,
+            airport: airportParam,
+            destination: destinationParam,
+          },
         });
-        toast.success("Fetched listings")
+        toast.success("Fetched listings");
         setPickups(response.data);
         setInitialPickups(response.data);
         setHasMore(response.data.length === 5);
@@ -132,7 +136,6 @@ export default function Pickups() {
 
     fetchPickups();
   }, [airportParam, destinationParam]);
-
 
   useEffect(() => {
     if (Object.keys(filters).length > 0) {
@@ -212,6 +215,14 @@ export default function Pickups() {
       alert("Please enter an airport to show on the map.");
     }
   };
+  const handleRatingChange = (e, rating) => {
+    setFilters((prevFilters) => {
+      const updatedRatings = e.target.checked
+        ? [...(prevFilters.ratings || []), rating]  // Add rating
+        : prevFilters.ratings.filter((r) => r !== rating);  // Remove rating
+      return { ...prevFilters, ratings: updatedRatings };
+    });
+  };
   const handleAirportInputChange = (e) => {
     const value = e.target.value;
     setAirportQuery(value);
@@ -264,7 +275,7 @@ export default function Pickups() {
   };
 
   const handleSearchSubmit = () => {
-    toast("Searching...")
+    toast("Searching...");
     const queryParams = new URLSearchParams();
     if (airportQuery) queryParams.append("airport", airportQuery);
     if (destinationQuery) queryParams.append("destination", destinationQuery);
@@ -383,13 +394,35 @@ export default function Pickups() {
                 <label htmlFor="waitingTime">Waiting Time</label>
               </div>
             </form>
+            <br />
+            <br />
+            <form action="" className="ti">
+              <label htmlFor="">Ratings</label>
+              <br />
+              <br />
+              {[1, 2, 3, 4, 5].map((rating) => (
+                <div className="flex_item" key={rating}>
+                  <input
+                    className="check"
+                    type="checkbox"
+                    name="ratings"
+                    value={rating}
+                    checked={filters.ratings?.includes(rating)}
+                    onChange={(e) => handleRatingChange(e, rating)}
+                  />
+                  <label htmlFor="ratings">
+                    {rating} star{rating > 1 ? "s" : ""}
+                  </label>
+                </div>
+              ))}
+            </form>
           </div>
         </div>
         <div className="col_2">
-        <div className="sa_search_1 i98">
+          <div className="sa_search_1 i98">
             <div className="search_item" ref={airportPopoverRef}>
               <input
-              className='new_maxi'
+                className="new_maxi"
                 type="text"
                 placeholder="Enter airport name, code, or city"
                 value={airportQuery}
@@ -422,7 +455,9 @@ export default function Pickups() {
                     <div
                       key={suggestion.place_id}
                       className="popover-item"
-                      onClick={() => handleDestinationSuggestionClick(suggestion)}
+                      onClick={() =>
+                        handleDestinationSuggestionClick(suggestion)
+                      }
                     >
                       {suggestion.display_name}
                     </div>
@@ -451,6 +486,18 @@ export default function Pickups() {
                     <div>
                       <div style={{ display: "flex", alignItems: "center" }}>
                         <h2>{pickup.serviceName}</h2>
+                        <div className="star_holder">
+                          {[...Array(5)].map((_, i) => (
+                            <i
+                              key={i}
+                              className={`bx bx-star ${
+                                i < Math.floor(pickup.averageRating || 0)
+                                  ? "bxs-star"
+                                  : ""
+                              }`}
+                            />
+                          ))}
+                        </div>
                       </div>
                       <h3 className="small_1" style={{ marginTop: 10 }}>
                         {pickup.contactName}
@@ -458,8 +505,25 @@ export default function Pickups() {
                     </div>
                     <div style={{ display: "flex", alignItems: "center" }}>
                       <div className="n94">
-                        <h3>{pickup.carMakeModel}</h3>
-                        <h3>{pickup.carColor}</h3>
+                        <h3>
+                          {pickup.averageRating >= 4.5 ? "Excellent" : "Good"}
+                        </h3>
+                        <h3>
+                          {pickup.reviewCount
+                            ? `${pickup.reviewCount} reviews`
+                            : "No reviews"}
+                        </h3>
+                      </div>
+                      <div
+                        className="rating_cont"
+                        style={{
+                          marginLeft: 10,
+                          maxWidth: "50px !important",
+                          minWidth: "100px !important",
+                        }}
+                      >
+                        {pickup.averageRating || "N/A"}{" "}
+                        <i className="bx bxs-star"></i>
                       </div>
                     </div>
                   </div>

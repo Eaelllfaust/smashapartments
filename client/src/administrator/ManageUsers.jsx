@@ -234,26 +234,12 @@ export default function ManageUsers() {
                   onChange={(e) => handleStatusChange(user._id, e.target.value)}
                 >
                   <option value="active">active</option>
-                  <option value="inactive">inactive</option>
                   <option value="suspended">suspended</option>
                 </select>
               </div>
-              <div 
-                className="button"
-                onClick={() => togglePayoutDetails(user._id)}
-              >
-                {payoutDetails[user._id]?.visible ? 'Hide payout details' : 'View payout details'}
-              </div>
+         
             </div>
-            {payoutDetails[user._id]?.visible && (
-              <div className="payout-details">
-                <h3>Payout Details</h3>
-                <br />
-                <p>Account Name: {payoutDetails[user._id].accountName}</p>
-                <p>Account Number: {payoutDetails[user._id].accountNumber}</p>
-                <p>Bank Name: {payoutDetails[user._id].bankName}</p>
-              </div>
-            )}
+
 
           </div>
         ))}

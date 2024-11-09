@@ -21,7 +21,7 @@ export default function CreateAccount() {
         } else if (!validateEmail(email)) {
             toast.error('Invalid email address.');
         } else {
-            navigate('/createpassword', { state: { email } });
+            navigate('/createdetails', { state: { email } });
         }
     };
 

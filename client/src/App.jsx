@@ -96,6 +96,13 @@ import SigninAdmin from "./SiginAdmin";
 import Privacy from "./Privacy";
 import TermsOfUse from "./Termsofuse";
 import Editstays from "./partner/Editstays";
+import Editservice from "./partner/Editservice";
+import Editrental from "./partner/Editrental";
+import Editoffice from "./partner/Editoffice";
+import CreateDetails from "./CreateDetails";
+import AuthmeVendor from "./AuthmeVendor";
+import PendingTasks from "./administrator/PendingTasks";
+
 
 axios.defaults.baseURL = "https://smashapartments.com/";
 axios.defaults.withCredentials = true;
@@ -106,16 +113,18 @@ function App() {
     <div  id="google_translate_element"></div>
       <Navbar />
       <Routes>
-        <Route path="/" element={<Home />} />
+      <Route path="/" element={<Home />} />
         <Route path="/listproperty" element={<ListProperty />} />
         <Route path="/createaccount" element={<CreateAccount />} />
         <Route path="/signin" element={<Signin />} />
         <Route path="/authme" element={<Authme />} />
+        <Route path="/authmevendor" element={<AuthmeVendor />} />
         <Route path="/signin/recovery" element={<Recovery />} />
         <Route path="/signinpartner/recovery" element={<Recovery />} />
         <Route path="/signinpartner" element={< SigninPartner/>} />
         <Route path="/signinadmin" element={< SigninAdmin/>} />
         <Route path="/partnerdetails" element={<PartnerDetails />} />
+        <Route path="/createdetails" element={<CreateDetails />} />
         <Route path="/partnerpassword" element={<PartnerPassword />} />
         <Route path="/stays" element={<Stays />} />
         <Route path="/aboutus" element={<About />} />
@@ -163,6 +172,9 @@ function App() {
         <Route path="/partner/managelistings/addlisting" element={<AddListing />} />
         <Route path="/partner/managelistings/addlisting/addstays" element={<AddStays />} />
         <Route path="/partner/managelistings/editlisting/editstays" element={<Editstays />} />
+        <Route path="/partner/managelistings/editlisting/editservice" element={<Editservice />} />
+        <Route path="/partner/managelistings/editlisting/editrental" element={<Editrental />} />
+        <Route path="/partner/managelistings/editlisting/editoffice" element={<Editoffice />} />
         <Route path="/partner/managelistings/addlisting/addcooffice" element={<AddCooffice />} />
         <Route path="/partner/managelistings/addlisting/addcarrentals" element={<AddCarRentals />} />
         <Route path="/partner/managelistings/addlisting/addairportpickup" element={<AddAirportPickup />} />
@@ -176,6 +188,7 @@ function App() {
         <Route path="/administrator/managelistings" element={<ManageListingsAdmin />} />
         <Route path="/administrator/manageusers" element={<ManageUsers />} />
         <Route path="/administrator/reports" element={<Reports />} />
+        <Route path="/administrator/pendingtasks" element={<PendingTasks />} />
         <Route path="/administrator/settings" element={<Settings />} />
         <Route path="/administrator/settings/generalsettings" element={<GeneralSettings />} />
         <Route path="/administrator/settings/email" element={<Email />} />

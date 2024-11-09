@@ -1,92 +1,97 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const serviceSchema = new mongoose.Schema({
   serviceName: {
     type: String,
-    required: true
+    required: true,
   },
   description: {
     type: String,
-    required: true
+    required: true,
   },
   carMakeModel: {
     type: String,
-    required: true
+    required: true,
   },
   carColor: {
     type: String,
-    required: true
+    required: true,
   },
   plateNumber: {
     type: String,
-    required: true
+    required: true,
   },
   driverName: {
     type: String,
-    required: true
+    required: true,
   },
   driverLicenseNumber: {
     type: String,
-    required: true
+    required: true,
   },
   driverPhoneNumber: {
     type: String,
-    required: true
+    required: true,
   },
   driverEmail: {
     type: String,
-    required: true
+    required: true,
   },
   pickupPrice: {
     type: Number,
-    required: true
+    required: true,
   },
   extraLuggage: {
     type: String,
-    required: true
+    required: true,
   },
   waitingTime: {
     type: String,
-    required: true
+    required: true,
   },
   availableFrom: {
     type: Date,
-    required: true
+    required: true,
   },
   availableTo: {
     type: Date,
-    required: true
+    required: true,
   },
   cancellationPolicy: {
     type: String,
-    required: true
+    required: true,
   },
   refundPolicy: {
     type: String,
-    required: true
+    required: true,
   },
   contactName: {
     type: String,
-    required: true
+    required: true,
   },
   contactPhone: {
     type: String,
-    required: true
+    required: true,
   },
   contactEmail: {
     type: String,
-    required: true
-  },  status: {
+    required: true,
+  },
+  status: {
     type: String,
-    default: 'active',
+    default: "active",
+  },
+  approved: {
+    type: Boolean,
+    default: false,
   },
   owner: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  }
+    ref: "User",
+    required: true,
+  },
 });
 
-const Service = mongoose.model('Service', serviceSchema);
+const Service = mongoose.model("Service", serviceSchema);
 
 module.exports = Service;

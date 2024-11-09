@@ -143,6 +143,18 @@ export default function ManageListings() {
                 <div>{listing.city}</div>
                 <div>{listing.type}</div>
                 <div>NGN {listing.price_per_night.toLocaleString()}</div>
+                <span
+                  className={`select appr ${
+                    listing.approved ? "approved" : ""
+                  }`}
+                  onClick={
+                    !listing.approved
+                      ? () => handleApprove(listing.type, listing._id)
+                      : undefined
+                  }
+                >
+                  {listing.approved ? "Approved" : "Awaiting approval"}
+                </span>
                 <select
                   className="select"
                   onChange={(event) =>
@@ -161,12 +173,24 @@ export default function ManageListings() {
               <div className="row_item rental" key={listing._id}>
                 <img
                   src={`https://smashapartments.com/uploads/${listing.images[0].media_name}`}
-                  alt="Stay"
+                  alt="Rental"
                 />
                 <div>{listing.carNameModel}</div>
                 <div>{listing.carType}</div>
                 <div>{listing.type}</div>
                 <div>NGN {listing.rentalPrice.toLocaleString()}</div>
+                <span
+                  className={`select appr ${
+                    listing.approved ? "approved" : ""
+                  }`}
+                  onClick={
+                    !listing.approved
+                      ? () => handleApprove(listing.type, listing._id)
+                      : undefined
+                  }
+                >
+                  {listing.approved ? "Approved" : "Awaiting approval"}
+                </span>
                 <select
                   className="select"
                   onChange={(event) =>
@@ -177,6 +201,7 @@ export default function ManageListings() {
                   <option value="active">active</option>
                   <option value="inactive">inactive</option>
                 </select>
+                <Link to={`editlisting/editrental?id=${listing._id}`} className="select edit">Edit</Link>
               </div>
             );
           } else if (listing.type === "office") {
@@ -184,12 +209,24 @@ export default function ManageListings() {
               <div className="row_item office" key={listing._id}>
                 <img
                   src={`https://smashapartments.com/uploads/${listing.images[0].media_name}`}
-                  alt="Stay"
+                  alt="Office"
                 />
                 <div>{listing.office_space_name}</div>
                 <div>{listing.city}</div>
                 <div>{listing.type}</div>
                 <div>NGN {listing.price_per_day.toLocaleString()}</div>
+                <span
+                  className={`select appr ${
+                    listing.approved ? "approved" : ""
+                  }`}
+                  onClick={
+                    !listing.approved
+                      ? () => handleApprove(listing.type, listing._id)
+                      : undefined
+                  }
+                >
+                  {listing.approved ? "Approved" : "Awaiting approval"}
+                </span>
                 <select
                   className="select"
                   onChange={(event) =>
@@ -200,6 +237,7 @@ export default function ManageListings() {
                   <option value="active">active</option>
                   <option value="inactive">inactive</option>
                 </select>
+                <Link to={`editlisting/editoffice?id=${listing._id}`} className="select edit">Edit</Link>
               </div>
             );
           } else if (listing.type === "service") {
@@ -207,12 +245,24 @@ export default function ManageListings() {
               <div className="row_item service" key={listing._id}>
                 <img
                   src={`https://smashapartments.com/uploads/${listing.images[0].media_name}`}
-                  alt="Stay"
+                  alt="Service"
                 />
                 <div>{listing.serviceName}</div>
                 <div>{listing.carMakeModel}</div>
                 <div>{listing.type}</div>
                 <div>NGN {listing.pickupPrice.toLocaleString()}</div>
+                <span
+                  className={`select appr ${
+                    listing.approved ? "approved" : ""
+                  }`}
+                  onClick={
+                    !listing.approved
+                      ? () => handleApprove(listing.type, listing._id)
+                      : undefined
+                  }
+                >
+                  {listing.approved ? "Approved" : "Awaiting approval"}
+                </span>
                 <select
                   className="select"
                   onChange={(event) =>
@@ -223,6 +273,7 @@ export default function ManageListings() {
                   <option value="active">active</option>
                   <option value="inactive">inactive</option>
                 </select>
+                <Link to={`editlisting/editservice?id=${listing._id}`} className="select edit">Edit</Link>
               </div>
             );
           } else {

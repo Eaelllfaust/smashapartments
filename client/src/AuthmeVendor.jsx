@@ -4,7 +4,7 @@ import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import axios from "axios";
 
-export default function Authme() {
+export default function AuthmeVendor() {
  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
@@ -27,7 +27,7 @@ export default function Authme() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post("/verifyaccount", {
+      const response = await axios.post("/verifyaccountpartner", {
         email,
         code: verificationCode,
       });
@@ -35,7 +35,7 @@ export default function Authme() {
 
       document.cookie = `token=${response.data.token}`;
 
-      window.location.href = "/signin?user";
+      window.location.href = "/signin?partner";
     } catch (error) {
       toast.error(error.response?.data?.error || "Verification failed");
     }

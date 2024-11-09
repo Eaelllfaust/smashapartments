@@ -37,6 +37,10 @@ const userSchema = new Schema({
         type: String,
         trim: true,
     },
+    dob: {
+        type: String,
+        trim: true,
+    },
     address: {
         type: String,
         trim: true,
@@ -67,7 +71,7 @@ const userSchema = new Schema({
     timestamps: true, 
 });
 
-// Create the User model
+
 const User = mongoose.model("User", userSchema);
 
 module.exports = User;

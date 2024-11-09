@@ -11,6 +11,9 @@ export default function ReservePickup() {
   const [arrivalDate, setArrivalDate] = useState("");
   const [arrivalTime, setArrivalTime] = useState("");
   const [totalPrice, setTotalPrice] = useState(0);
+  const [commission, setCommission] = useState(0);
+  const [vat, setVAT] = useState(0);
+  const [finalPrice, setFinalPrice] = useState(0);
   const { user } = useContext(UserContext);
 
   const serviceId = searchParams.get("id");
@@ -21,6 +24,7 @@ export default function ReservePickup() {
         const response = await axios.get(`/getpickupdata/${serviceId}`);
         setServiceDetails(response.data);
         setTotalPrice(response.data.pickupPrice);
+        calculateFinalPrice(response.data.pickupPrice);
       } catch (error) {
         console.error("Error fetching service details:", error);
         toast.error("Failed to load service details. Please try again later.");
@@ -29,7 +33,6 @@ export default function ReservePickup() {
 
     fetchServiceDetails();
 
-    // Load Paystack script
     const script = document.createElement("script");
     script.src = "https://js.paystack.co/v2/inline.js";
     script.async = true;
@@ -48,10 +51,25 @@ export default function ReservePickup() {
 
       if (selectedDate >= availableFrom && selectedDate <= availableTo) {
         setArrivalDate(e.target.value);
+        calculateFinalPrice(serviceDetails.pickupPrice);
       } else {
         toast.error("Selected date is outside the available range.");
       }
     }
+  };
+
+  const handleTimeChange = (e) => {
+    setArrivalTime(e.target.value);
+    calculateFinalPrice(serviceDetails.pickupPrice);
+  };
+
+  const calculateFinalPrice = (price) => {
+    const commission = price * 0.1; // 10% commission
+    const vat = price * 0.075; // 7.5% VAT
+    const finalPrice = price + commission + vat;
+    setCommission(commission);
+    setVAT(vat);
+    setFinalPrice(finalPrice);
   };
 
   const handlePayment = () => {
@@ -82,7 +100,7 @@ export default function ReservePickup() {
     const paystack = new window.PaystackPop();
     paystack.newTransaction({
       key: "pk_test_aa805fbdf79594d452dd669b02148a98482bae70", // Replace with your public key
-      amount: totalPrice * 100, // Amount in kobo
+      amount: finalPrice * 100, // Amount in kobo
       email: user.email,
       onSuccess: (transaction) => {
         verifyPaymentAndBook(transaction.reference);
@@ -100,7 +118,7 @@ export default function ReservePickup() {
         serviceId,
         arrivalDate,
         arrivalTime,
-        totalPrice,
+        totalPrice: finalPrice,
       });
 
       if (response.status === 201) {
@@ -121,7 +139,7 @@ export default function ReservePickup() {
   return (
     <>
       <div className="shade_2 df">
-        <h1>Search for pickups</h1>
+        <h1>Airport pickups</h1>
         <p>From budget rides to luxury cars and everything in between</p>
         <img
           src="/assets/linear_bg.png"
@@ -156,22 +174,54 @@ export default function ReservePickup() {
                     )}
                 </div>
                 <div className="list_2">
-                <div className="l22">
-                  <div>
+                  <div className="l22">
+                    <div>
+                      <div style={{ display: "flex", alignItems: "center" }}>
+                        <h2>{serviceDetails.serviceName}</h2>
+                        <div className="star_holder">
+                          {[...Array(5)].map((_, i) => (
+                            <i
+                              key={i}
+                              className={`bx bx-star ${
+                                i <
+                                Math.floor(serviceDetails.averageRating || 0)
+                                  ? "bxs-star"
+                                  : ""
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                      <h3 className="small_1" style={{ marginTop: 10 }}>
+                        {serviceDetails.contactName}
+                      </h3>
+                    </div>
                     <div style={{ display: "flex", alignItems: "center" }}>
-                      <h2>{serviceDetails.serviceName}</h2>
+                      <div className="n94">
+                        <h3>
+                          {serviceDetails.averageRating >= 4.5
+                            ? "Excellent"
+                            : "Good"}
+                        </h3>
+                        <h3>
+                          {serviceDetails.reviewCount
+                            ? `${serviceDetails.reviewCount} reviews`
+                            : "No reviews"}
+                        </h3>
+                      </div>
+                      <div
+                        className="rating_cont"
+                        style={{
+                          marginLeft: 10,
+                          maxWidth: "50px !important",
+                          minWidth: "100px !important",
+                        }}
+                      >
+                        {serviceDetails.averageRating || "N/A"}{" "}
+                        <i className="bx bxs-star"></i>
+                      </div>
                     </div>
-                    <h3 className="small_1" style={{ marginTop: 10 }}>
-                      {serviceDetails.contactName}
-                    </h3>
                   </div>
-                  <div style={{ display: "flex", alignItems: "center" }}>
-                    <div className="n94">
-                      <h3>{serviceDetails.carMakeModel}</h3>
-                      <h3>{serviceDetails.carColor}</h3>
-                    </div>
-                  </div>
-                </div>
                   <div className="l33">
                     <div className="o93">
                       <h3>Airport Pickup</h3>
@@ -188,12 +238,11 @@ export default function ReservePickup() {
                         </h1>
                       </div>
                       <div className="o33">
-                      <div>
-                        {serviceDetails.extraLuggage
-                          ? "Extra luggage allowed"
-                          : "Standard luggage"}
-                      </div>
-               
+                        <div>
+                          {serviceDetails.extraLuggage
+                            ? "Extra luggage allowed"
+                            : "Standard luggage"}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -263,12 +312,20 @@ export default function ReservePickup() {
                       NGN {serviceDetails?.pickupPrice.toLocaleString()}
                     </div>
                   </div>
+                  <div className="l02_1">
+                    <div>Commission (10%)</div>
+                    <div>NGN {commission.toLocaleString()}</div>
+                  </div>
+                  <div className="l02_1">
+                    <div>VAT (7.5%)</div>
+                    <div>NGN {vat.toLocaleString()}</div>
+                  </div>
                 </div>
                 <br />
                 <div>
                   <h2>Total</h2>
                   <br />
-                  <h2 className="sum">NGN {totalPrice.toLocaleString()}</h2>
+                  <h2 className="sum">NGN {finalPrice.toLocaleString()}</h2>
                 </div>
                 <br />
                 <div className="button b3 b2" onClick={handlePayment}>

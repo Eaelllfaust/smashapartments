@@ -86,20 +86,32 @@ const {
   uploadReceiptRental,
   getStayListing,
   updateListing,
+  getServiceListing,
+  updateService,
+  getRentalListing,
+  updateRental,
+  getOfficeListing,
+  updateOffice,
+  Review,
+  getReview,
+  approveListing,
+  verifyAccountPartner,
+  MakePayout,
+  UpdateActionStatus,
+  PendingActions,
 } = require("../controllers/authController");
-
 router.use(
   cors({
     credentials: true,
     origin: "https://smashapartments.com",
   })
 );
-
 router.get("/", test);
-router.post("/register", registerUser);
+router.post("/register", upload.single("gId"), registerUser);
 router.post("/login", loginUser);
 router.post("/resetpassword", resetPassword);
 router.post("/verifyaccount", verifyAccount);
+router.post("/verifyaccountpartner", verifyAccountPartner);
 router.post("/loginpartner", loginPartner);
 router.post("/loginadmin", loginAdmin);
 router.get("/profile", getFullProfile);
@@ -111,7 +123,9 @@ router.put("/updatebookingstatus", updatebookingstatus);
 router.put("/updatepayoutsettings", updatePayoutSettings);
 router.put("/updatepartnerdetails", updatePartnerDetails);
 router.put("/updatepayment", updatePayment);
+router.put("/update-action-status/:id", UpdateActionStatus);
 router.get("/getlistings", getListings);
+router.get("/pending-actions", PendingActions);
 router.get("/getpickups", getPickups);
 router.get("/activeusers", activeUsers);
 router.get("/payoutdetails/:userId", payoutDetails);
@@ -138,6 +152,8 @@ router.get("/listings/inactive/:userId", getAllInactiveListings);
 router.get("/listings/inactivegeneral", getAllInactiveListingsGeneral);
 router.post("/likeproperty", likeProperty);
 router.post("/updatestatus", updateStatus);
+router.post("/submit-review", Review);
+router.post("/makepayout", MakePayout);
 router.post("/cancelbooking/:bookingId", cancelBooking);
 router.post("/cancelofficespace/:bookingId", cancelOfficeSpace );
 router.post("/cancelrental/:rentalId", cancelRental);
@@ -148,6 +164,7 @@ router.post("/verify_payment_rental", verifyPaymentAndBookRental);
 router.post("/verify_payment_service", reserveAndBookPickup);
 router.get("/getlistingdata/:id", getListingData);
 router.get("/getrentaldetails/:id", getRentalDetails);
+router.get("/reviews/:userId/:bookingId/:listingId", getReview);
 router.get("/getpickupdata/:id", getPickupData);
 router.get("/activelistings/:userId", getallActiveListings);
 router.get("/activelistingsgeneral", getallActiveListingsGeneral);
@@ -165,13 +182,20 @@ router.get("/getcurrentbookings/:userId", getCurrentBookings);
 router.get("/getcurrentrentals/:userId", getCurrentRentals);
 router.get("/checkliked/:id", checkLiked);
 router.get("/getlisting/:id", getStayListing);
+router.get("/getservicelisting/:id", getServiceListing);
+router.get("/getofficelisting/:id", getOfficeListing);
+router.get("/getrentallisting/:id", getRentalListing);
 router.get("/getpaymentmethod", getPaymentMethod);
-router.post("/createpartner", createPartner);
+router.post("/createpartner",  upload.single("gId"), createPartner);
+router.post('/approveListing', approveListing);
 router.post("/stayslisting", upload.array("images", 15), createStayListing);
 router.put("/stayslisting/:id", upload.array("images", 15), updateListing);
 router.post("/coofficelisting", upload.array("images", 15), createOfficeListing);
+router.put("/coofficelisting/:id", upload.array("images", 15), updateOffice);
 router.post("/airportpickuplisting", upload.array("images", 15), createService);
+router.put("/airportpickuplisting/:id", upload.array("images", 15), updateService);
 router.post("/carrentalslisting", upload.array("images", 15), createRental);
+router.put("/carrentalslisting/:id", upload.array("images", 15), updateRental);
 router.post("/uploadreceipt/:bookingId", upload.single("receipt"), uploadReceipt);
 router.post("/uploadreceiptpickup/:bookingId", upload.single("receipt"), uploadReceiptPickup);
 router.post("/uploadreceiptoffice/:bookingId", upload.single("receipt"), uploadReceiptOffice);

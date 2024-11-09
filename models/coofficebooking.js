@@ -29,7 +29,7 @@ const coofficeBookingSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    num: ["pending", "confirmed", "reserved", "cancelled", "cancelledbyparnter", "cancelledbyadmin", "ended"],
+    enum: ["pending", "confirmed", "reserved", "cancelled", "cancelledbyparnter", "cancelledbyadmin", "ended", "checkedin"],
     default: "pending",
   },
   createdAt: { 

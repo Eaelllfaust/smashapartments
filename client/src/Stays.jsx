@@ -191,7 +191,15 @@ export default function Stays() {
     navigate(`/stays?${queryParams.toString()}`);
   };
 
-
+  const handleRatingChange = (e, rating) => {
+    setFilters((prevFilters) => {
+      const updatedRatings = e.target.checked
+        ? [...(prevFilters.ratings || []), rating]  
+        : prevFilters.ratings.filter((r) => r !== rating); 
+      return { ...prevFilters, ratings: updatedRatings };
+    });
+  };
+  
   const fetchListings = async () => {
     setLoading(true);
     try {
@@ -376,65 +384,24 @@ export default function Stays() {
             <br />
             <br />
             <form action="" className="ti">
-              <label htmlFor="">Ratings</label>
-              <br />
-              <br />
-              <div className="flex_item">
-                <input
-                  className="check"
-                  type="checkbox"
-                  name="ratings"
-                  value="1"
-                  checked={filters.ratings === 1}
-                  onChange={handleFilterChange}
-                />
-                <label htmlFor="ratings">1 star</label>
-              </div>
-              <div className="flex_item">
-                <input
-                  className="check"
-                  type="checkbox"
-                  name="ratings"
-                  value="2"
-                  checked={filters.ratings === 2}
-                  onChange={handleFilterChange}
-                />
-                <label htmlFor="ratings">2 stars</label>
-              </div>
-              <div className="flex_item">
-                <input
-                  className="check"
-                  type="checkbox"
-                  name="ratings"
-                  value="3"
-                  checked={filters.ratings === 3}
-                  onChange={handleFilterChange}
-                />
-                <label htmlFor="ratings">3 stars</label>
-              </div>
-              <div className="flex_item">
-                <input
-                  className="check"
-                  type="checkbox"
-                  name="ratings"
-                  value="4"
-                  checked={filters.ratings === 4}
-                  onChange={handleFilterChange}
-                />
-                <label htmlFor="ratings">4 stars</label>
-              </div>
-              <div className="flex_item">
-                <input
-                  className="check"
-                  type="checkbox"
-                  name="ratings"
-                  value="5"
-                  checked={filters.ratings === 5}
-                  onChange={handleFilterChange}
-                />
-                <label htmlFor="ratings">5 stars</label>
-              </div>
-            </form>
+  <label htmlFor="">Ratings</label>
+  <br />
+  <br />
+  {[1, 2, 3, 4, 5].map((rating) => (
+    <div className="flex_item" key={rating}>
+      <input
+        className="check"
+        type="checkbox"
+        name="ratings"
+        value={rating}
+        checked={filters.ratings?.includes(rating)}
+        onChange={(e) => handleRatingChange(e, rating)}
+      />
+      <label htmlFor="ratings">{rating} star{rating > 1 ? 's' : ''}</label>
+    </div>
+  ))}
+</form>
+
           </div>
         </div>
         <div className="col_2">
@@ -547,11 +514,9 @@ export default function Stays() {
                       <div style={{ display: "flex", alignItems: "center" }}>
                         <h2>{listing.property_name}</h2>
                         <div className="star_holder">
-                          <i className="bx bx-star" />
-                          <i className="bx bx-star" />
-                          <i className="bx bx-star" />
-                          <i className="bx bx-star" />
-                          <i className="bx bx-star" />
+                          {[...Array(5)].map((_, i) => (
+                            <i key={i} className={`bx bx-star ${i < Math.floor(listing.averageRating || 0) ? 'bxs-star' : ''}`} />
+                          ))}
                         </div>
                       </div>
                       <h3 className="small_1" style={{ marginTop: 10 }}>
@@ -559,21 +524,27 @@ export default function Stays() {
                       </h3>
                     </div>
                     <div style={{ display: "flex", alignItems: "center" }}>
-                      <div className="n94">
-                        <h3>{listing.ratings >= 4.5 ? "Excellent" : "Good"}</h3>
-                        <h3>{listing.reviews || "No reviews"}</h3>
-                      </div>
-                      <div
-                        className="rating_cont"
-                        style={{
-                          marginLeft: 10,
-                          maxWidth: "50px !important",
-                          minWidth: "100px !important",
-                        }}
-                      >
-                        {listing.ratings || "N/A"}
-                      </div>
+                    <div className="n94">
+                      <h3>
+                        {listing.averageRating >= 4.5 ? "Excellent" : "Good"}
+                      </h3>
+                      <h3>
+                        {listing.reviewCount
+                          ? `${listing.reviewCount} reviews`
+                          : "No reviews"}
+                      </h3>
                     </div>
+                    <div
+                      className="rating_cont"
+                      style={{
+                        marginLeft: 10,
+                        maxWidth: "50px !important",
+                        minWidth: "100px !important",
+                      }}
+                    >
+                      {listing.averageRating || "N/A"} <i className="bx bxs-star"></i>
+                    </div>
+                  </div>
                   </div>
                   <div className="l33">
                     <div className="o93">

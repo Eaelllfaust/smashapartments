@@ -10,8 +10,8 @@ export default function Editstays() {
   const navigate = useNavigate();
   const [existingImages, setExistingImages] = useState([]);
   const [images, setImages] = useState({
-    existing: [], // for images already on the server
-    new: []       // for newly uploaded images
+    existing: [], 
+    new: []
   });
   
   const id = new URLSearchParams(location.search).get("id");
@@ -230,7 +230,7 @@ export default function Editstays() {
               <div className="image_preview">
     {images.existing.map((image, index) => (
       <div key={`existing-${index}`} className="image_container">
-        <img src={`https://smashapartments.com${image.url}`} alt={`existing preview ${index}`} />
+        <img src={`https://smashapartments.com/uploads/${image.name}`} alt={`existing preview ${index}`} />
         <button 
           type="button" 
           onClick={() => handleImageRemove(index, 'existing')}

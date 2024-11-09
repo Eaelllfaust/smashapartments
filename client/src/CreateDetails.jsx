@@ -39,11 +39,10 @@ const PasswordHelper = ({ password }) => {
   );
 };
 
-export default function PartnerDetails() {
+export default function CreateDetails() {
   const { state } = useLocation();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [address, setAddress] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [DOB, setDOB] = useState("");
   const location = useLocation();
@@ -90,12 +89,11 @@ export default function PartnerDetails() {
         formData.append("firstName", firstName);
         formData.append("lastName", lastName);
         formData.append("phoneNumber", phoneNumber);
-        formData.append("address", address);
         formData.append("DOB", DOB);
         formData.append("password", password);
         formData.append("gId", selectedFile);
 
-        const response = await axios.post("/createpartner", formData, {
+        const response = await axios.post("/register", formData, {
           headers: {
             "Content-Type": "multipart/form-data",
           },
@@ -107,7 +105,7 @@ export default function PartnerDetails() {
             setPassword("");
             setConfirmPassword("");
             toast.success("Check email for verification code");
-            navigate(`/authmevendor?email=${response.data.user.email}`);
+            navigate(`/authme?email=${response.data.user.email}`);
         }
       }
     } catch (error) {
@@ -119,8 +117,7 @@ export default function PartnerDetails() {
   return (
     <div>
       <div className="shade_2 df">
-      <h1>List your property</h1>
-      <p>Over 12,000 properties live</p>
+        <h1>Create account</h1>
         <img src="assets/linear_bg.png" className="shade_bg" alt="" />
         <div className="shade_item">
           <img src="assets/bg (2).png" alt="" />
@@ -174,15 +171,6 @@ export default function PartnerDetails() {
             value={phoneNumber}
             onChange={(e) => setPhoneNumber(e.target.value)}
           />
-           <br />
-          <label htmlFor="address">Address</label>
-          <input
-            type="text"
-            placeholder="Address"
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
-          />
-          
           <label htmlFor="ID">Government issued ID</label>
           <div
             onClick={() => document.getElementById("fileInput").click()}

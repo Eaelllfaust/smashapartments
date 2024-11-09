@@ -86,7 +86,7 @@ export default function AirportPickupDetails() {
   return (
     <>
       <div className="shade_2 df">
-        <h1>Search for pickups</h1>
+        <h1>Airport pickups</h1>
         <p>From budget rides to luxury cars and everything in between</p>
         <img
           src="/assets/linear_bg.png"
@@ -127,6 +127,18 @@ export default function AirportPickupDetails() {
                   <div>
                     <div style={{ display: "flex", alignItems: "center" }}>
                       <h2>{pickup.serviceName}</h2>
+                      <div className="star_holder">
+                        {[...Array(5)].map((_, i) => (
+                          <i
+                            key={i}
+                            className={`bx bx-star ${
+                              i < Math.floor(pickup.averageRating || 0)
+                                ? "bxs-star"
+                                : ""
+                            }`}
+                          />
+                        ))}
+                      </div>
                     </div>
                     <h3 className="small_1" style={{ marginTop: 10 }}>
                       {pickup.contactName}
@@ -134,8 +146,25 @@ export default function AirportPickupDetails() {
                   </div>
                   <div style={{ display: "flex", alignItems: "center" }}>
                     <div className="n94">
-                      <h3>{pickup.carMakeModel}</h3>
-                      <h3>{pickup.carColor}</h3>
+                      <h3>
+                        {pickup.averageRating >= 4.5 ? "Excellent" : "Good"}
+                      </h3>
+                      <h3>
+                        {pickup.reviewCount
+                          ? `${pickup.reviewCount} reviews`
+                          : "No reviews"}
+                      </h3>
+                    </div>
+                    <div
+                      className="rating_cont"
+                      style={{
+                        marginLeft: 10,
+                        maxWidth: "50px !important",
+                        minWidth: "100px !important",
+                      }}
+                    >
+                      {pickup.averageRating || "N/A"}{" "}
+                      <i className="bx bxs-star"></i>
                     </div>
                   </div>
                 </div>
@@ -160,7 +189,6 @@ export default function AirportPickupDetails() {
                           ? "Extra luggage allowed"
                           : "Standard luggage"}
                       </div>
-                     
                     </div>
                     <br />
                     <div

@@ -15,10 +15,10 @@ export default function PersonalInfo() {
     last_name: '',
     phone_number: '',
     contact_email: '',
+    dob: '',
     address: ''
   });
 
-  // Populate the form with user details if the user is available
   useEffect(() => {
     if (loading) return;
     if (!user) {
@@ -31,6 +31,7 @@ export default function PersonalInfo() {
         last_name: user.last_name || '',
         phone_number: user.phone_number || '',
         contact_email: user.contact_email || '',
+        dob: user.dob || '',
         address: user.address || '',
       });
     }
@@ -55,6 +56,9 @@ export default function PersonalInfo() {
     // Frontend Validation
     if (!formData.first_name.trim()) {
       return toast.error('First name cannot be empty');
+    }
+    if (!formData.dob.trim()) {
+      return toast.error('Date of birth cannot be empty');
     }
     if (!formData.last_name.trim()) {
       return toast.error('Last name cannot be empty');
@@ -131,6 +135,15 @@ export default function PersonalInfo() {
                 name="last_name"
                 placeholder="Last name"
                 value={formData.last_name}
+                onChange={handleChange}
+              />
+              <br />
+              <label htmlFor="dob">Date of birth</label>
+              <br />
+              <input
+                type="date"
+                name="dob"
+                value={formData.dob}
                 onChange={handleChange}
               />
               <br />

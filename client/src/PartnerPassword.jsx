@@ -43,7 +43,7 @@ export default function PartnerPassword() {
                 toast.error(response.data.error);
             } else {
                 toast.success(response.data.message);
-                navigate('/authme'); // Adjust this to your success route
+                navigate('/authme'); 
             }
         } catch (error) {
             toast.error('An error occurred. Please try again.');

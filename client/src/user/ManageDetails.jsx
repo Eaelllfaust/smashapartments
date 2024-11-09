@@ -18,7 +18,8 @@ export default function ManageDetails() {
       setFormData({
         first_name: user.first_name || '',
         last_name: user.last_name || '',
-        phone_number: user.phone_number || ''
+        phone_number: user.phone_number || '',
+        dob: user.dob || '',
       });
     }
   }, [user]);
@@ -39,6 +40,9 @@ export default function ManageDetails() {
     // Frontend Validation
     if (!formData.first_name.trim()) {
       return toast.error('First name cannot be empty');
+    }
+    if (!formData.dob.trim()) {
+      return toast.error('Date of birth cannot be empty');
     }
     if (!formData.last_name.trim()) {
       return toast.error('Last name cannot be empty');
@@ -109,6 +113,16 @@ export default function ManageDetails() {
                 name="last_name"
                 placeholder="Last name"
                 value={formData.last_name}
+                onChange={handleChange}
+              />
+              <br />
+            
+              <label htmlFor="dob">Date of birth</label>
+              <br />
+              <input
+                type="date"
+                name="dob"
+                value={formData.dob}
                 onChange={handleChange}
               />
               <br />

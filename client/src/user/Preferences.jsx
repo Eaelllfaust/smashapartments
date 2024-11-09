@@ -4,7 +4,119 @@ import { useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { UserContext } from '../../context/userContext';
 import { toast } from 'react-toastify';
-
+const LANGUAGES = [
+  // Existing primary languages
+  { code: 'en', name: 'English' },
+  { code: 'es', name: 'Spanish' },
+  { code: 'fr', name: 'French' },
+  { code: 'de', name: 'German' },
+  { code: 'yo', name: 'Yoruba' },
+  { code: 'ha', name: 'Hausa' },
+  
+  // Additional languages
+  { code: 'af', name: 'Afrikaans' },
+  { code: 'sq', name: 'Albanian' },
+  { code: 'am', name: 'Amharic' },
+  { code: 'ar', name: 'Arabic' },
+  { code: 'hy', name: 'Armenian' },
+  { code: 'az', name: 'Azerbaijani' },
+  { code: 'eu', name: 'Basque' },
+  { code: 'be', name: 'Belarusian' },
+  { code: 'bn', name: 'Bengali' },
+  { code: 'bs', name: 'Bosnian' },
+  { code: 'bg', name: 'Bulgarian' },
+  { code: 'ca', name: 'Catalan' },
+  { code: 'ceb', name: 'Cebuano' },
+  { code: 'zh', name: 'Chinese (Simplified)' },
+  { code: 'zh-TW', name: 'Chinese (Traditional)' },
+  { code: 'co', name: 'Corsican' },
+  { code: 'hr', name: 'Croatian' },
+  { code: 'cs', name: 'Czech' },
+  { code: 'da', name: 'Danish' },
+  { code: 'nl', name: 'Dutch' },
+  { code: 'eo', name: 'Esperanto' },
+  { code: 'et', name: 'Estonian' },
+  { code: 'fi', name: 'Finnish' },
+  { code: 'fy', name: 'Frisian' },
+  { code: 'gl', name: 'Galician' },
+  { code: 'ka', name: 'Georgian' },
+  { code: 'el', name: 'Greek' },
+  { code: 'gu', name: 'Gujarati' },
+  { code: 'ht', name: 'Haitian Creole' },
+  { code: 'haw', name: 'Hawaiian' },
+  { code: 'he', name: 'Hebrew' },
+  { code: 'hi', name: 'Hindi' },
+  { code: 'hmn', name: 'Hmong' },
+  { code: 'hu', name: 'Hungarian' },
+  { code: 'is', name: 'Icelandic' },
+  { code: 'ig', name: 'Igbo' },
+  { code: 'id', name: 'Indonesian' },
+  { code: 'ga', name: 'Irish' },
+  { code: 'it', name: 'Italian' },
+  { code: 'ja', name: 'Japanese' },
+  { code: 'jv', name: 'Javanese' },
+  { code: 'kn', name: 'Kannada' },
+  { code: 'kk', name: 'Kazakh' },
+  { code: 'km', name: 'Khmer' },
+  { code: 'ko', name: 'Korean' },
+  { code: 'ku', name: 'Kurdish' },
+  { code: 'ky', name: 'Kyrgyz' },
+  { code: 'lo', name: 'Lao' },
+  { code: 'la', name: 'Latin' },
+  { code: 'lv', name: 'Latvian' },
+  { code: 'lt', name: 'Lithuanian' },
+  { code: 'lb', name: 'Luxembourgish' },
+  { code: 'mk', name: 'Macedonian' },
+  { code: 'mg', name: 'Malagasy' },
+  { code: 'ms', name: 'Malay' },
+  { code: 'ml', name: 'Malayalam' },
+  { code: 'mt', name: 'Maltese' },
+  { code: 'mi', name: 'Maori' },
+  { code: 'mr', name: 'Marathi' },
+  { code: 'mn', name: 'Mongolian' },
+  { code: 'my', name: 'Myanmar (Burmese)' },
+  { code: 'ne', name: 'Nepali' },
+  { code: 'no', name: 'Norwegian' },
+  { code: 'ny', name: 'Nyanja (Chichewa)' },
+  { code: 'or', name: 'Odia (Oriya)' },
+  { code: 'ps', name: 'Pashto' },
+  { code: 'fa', name: 'Persian' },
+  { code: 'pl', name: 'Polish' },
+  { code: 'pt', name: 'Portuguese' },
+  { code: 'pa', name: 'Punjabi' },
+  { code: 'ro', name: 'Romanian' },
+  { code: 'ru', name: 'Russian' },
+  { code: 'sm', name: 'Samoan' },
+  { code: 'gd', name: 'Scots Gaelic' },
+  { code: 'sr', name: 'Serbian' },
+  { code: 'st', name: 'Sesotho' },
+  { code: 'sn', name: 'Shona' },
+  { code: 'sd', name: 'Sindhi' },
+  { code: 'si', name: 'Sinhala' },
+  { code: 'sk', name: 'Slovak' },
+  { code: 'sl', name: 'Slovenian' },
+  { code: 'so', name: 'Somali' },
+  { code: 'su', name: 'Sundanese' },
+  { code: 'sw', name: 'Swahili' },
+  { code: 'sv', name: 'Swedish' },
+  { code: 'tl', name: 'Tagalog (Filipino)' },
+  { code: 'tg', name: 'Tajik' },
+  { code: 'ta', name: 'Tamil' },
+  { code: 'tt', name: 'Tatar' },
+  { code: 'te', name: 'Telugu' },
+  { code: 'th', name: 'Thai' },
+  { code: 'tr', name: 'Turkish' },
+  { code: 'tk', name: 'Turkmen' },
+  { code: 'uk', name: 'Ukrainian' },
+  { code: 'ur', name: 'Urdu' },
+  { code: 'ug', name: 'Uyghur' },
+  { code: 'uz', name: 'Uzbek' },
+  { code: 'vi', name: 'Vietnamese' },
+  { code: 'cy', name: 'Welsh' },
+  { code: 'xh', name: 'Xhosa' },
+  { code: 'yi', name: 'Yiddish' },
+  { code: 'zu', name: 'Zulu' }
+];
 export default function Preferences() {
   const { user, loading } = useContext(UserContext);
   const navigate = useNavigate();
@@ -28,9 +140,7 @@ export default function Preferences() {
         const data = response.data.preferences;
 
         if (data) {
-          setCurrency(data.currency);
           setLanguage(data.language);
-          setNotifications(data.notifications ? 'yes' : 'no');
         }
       } catch (error) {
         console.error('Error fetching user preferences:', error);
@@ -43,10 +153,7 @@ export default function Preferences() {
   // Handle form submission
   const handleSubmit = async () => {
     try {
-      if (!currency || !language || !notifications) {
-        toast.error('Please fill in all fields');
-        return;
-      }
+     
 
       const response = await axios.post('/updatepreferences', {
         currency,
@@ -93,7 +200,7 @@ export default function Preferences() {
                 Manage preferences<img src="../assets/preference.svg" alt="" />
               </h2>
             </div>
-            <label htmlFor="currency">Currency</label>
+            {/* <label htmlFor="currency">Currency</label>
             <br />
             <select
               name="currency"
@@ -103,22 +210,22 @@ export default function Preferences() {
               <option value="NGN">NGN</option>
               <option value="USD">USD</option>
             </select>
-            <br />
+            <br /> */}
             <label htmlFor="language">Language</label>
             <br />
             <select
-              name="language"
-              value={language}
-              onChange={(e) => setLanguage(e.target.value)}
-            >
-              <option value="en">English</option>
-              <option value="fr">French</option>
-              <option value="de">German</option>
-              <option value="yo">Yoruba</option>
-              <option value="ha">Hausa</option>
-            </select>
+  name="language"
+  value={language}
+  onChange={(e) => setLanguage(e.target.value)}
+>
+  {LANGUAGES.map((lang) => (
+    <option key={lang.code} value={lang.code}>
+      {lang.name}
+    </option>
+  ))}
+</select>
             <br />
-            <label htmlFor="notifications">I want to receive email notifications</label>
+            <label htmlFor="notifications">I want to receive promotion emails</label>
             <br />
             <select
               name="notifications"

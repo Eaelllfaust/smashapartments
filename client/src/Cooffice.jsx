@@ -110,7 +110,15 @@ export default function Cooffice() {
       setLoading(false);
     }
   };
-
+  const handleRatingChange = (e, rating) => {
+    setFilters((prevFilters) => {
+      const updatedRatings = e.target.checked
+        ? [...(prevFilters.ratings || []), rating]  // Add rating
+        : prevFilters.ratings.filter((r) => r !== rating);  // Remove rating
+      return { ...prevFilters, ratings: updatedRatings };
+    });
+  };
+  
   const handleShowOnMap = () => {
     const location = locationParam || searchLocation || '';
     if (location) {
@@ -329,23 +337,24 @@ export default function Cooffice() {
             <br />
             <br />
             <form action="" className="ti">
-              <label htmlFor="">Ratings</label>
-              <br />
-              <br />
-              {[1, 2, 3, 4, 5].map((star) => (
-                <div className="flex_item" key={star}>
-                  <input
-                    className="check"
-                    type="checkbox"
-                    name="ratings"
-                    value={star}
-                    checked={filters.ratings === star}
-                    onChange={handleFilterChange}
-                  />
-                  <label htmlFor={`star${star}`}>{star} star{star > 1 ? 's' : ''}</label>
-                </div>
-              ))}
-            </form>
+  <label htmlFor="">Ratings</label>
+  <br />
+  <br />
+  {[1, 2, 3, 4, 5].map((rating) => (
+    <div className="flex_item" key={rating}>
+      <input
+        className="check"
+        type="checkbox"
+        name="ratings"
+        value={rating}
+        checked={filters.ratings?.includes(rating)}
+        onChange={(e) => handleRatingChange(e, rating)}
+      />
+      <label htmlFor="ratings">{rating} star{rating > 1 ? 's' : ''}</label>
+    </div>
+  ))}
+</form>
+
           </div>
         </div>
         <div className="col_2">
@@ -391,7 +400,7 @@ export default function Cooffice() {
               <div className="list_node" key={cooffice._id}>
                 <div className="list_1">
                 <img
-                    src={`https://smashapartments.com/uploads/${cooffice.images[0]?.media_name}`}
+                    src={`http://smashapartments.com/uploads/${cooffice.images[0]?.media_name}`}
                   />
                 </div>
                 <div className="list_2">
@@ -401,7 +410,7 @@ export default function Cooffice() {
                         <h2>{cooffice.office_space_name}</h2>
                         <div className="star_holder">
                           {[...Array(5)].map((_, i) => (
-                            <i key={i} className={`bx bx-star ${i < Math.floor(cooffice.ratings || 0) ? 'filled' : ''}`} />
+                            <i key={i} className={`bx bx-star ${i < Math.floor(cooffice.averageRating || 0) ? 'bxs-star' : ''}`} />
                           ))}
                         </div>
                       </div>
@@ -411,18 +420,18 @@ export default function Cooffice() {
                     </div>
                     <div style={{ display: "flex", alignItems: "center" }}>
                       <div className="n94">
-                        <h3>{cooffice.ratings >= 4.5 ? 'Excellent' : cooffice.ratings >= 3.5 ? 'Very Good' : cooffice.ratings >= 2.5 ? 'Good' : 'Average'}</h3>
-                        <h3>{cooffice.reviews || 'No'} reviews</h3>
+                        <h3>{cooffice.averageRating >= 4.5 ? "Excellent" : "Good"}</h3>
+                        <h3>{cooffice.reviewCount || "No "} reviews</h3>
                       </div>
                       <div
                         className="rating_cont"
                         style={{
                           marginLeft: 10,
                           maxWidth: "50px !important",
-                          minWidth: "100px !important"
+                          minWidth: "100px !important",
                         }}
                       >
-                        {cooffice.ratings ? cooffice.ratings.toFixed(1) : 'N/A'}
+                        {cooffice.averageRating || "N/A"} <i className='bx bxs-star'></i>
                       </div>
                     </div>
                   </div>

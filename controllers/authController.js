@@ -8,6 +8,7 @@ const LikedItem = require("../models/likeditem");
 const Service = require("../models/service");
 const OfficeSpace = require("../models/cooffice");
 const Receipts = require("../models/receipts");
+const VendorPayouts = require("../models/vendorpayouts");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
@@ -22,19 +23,19 @@ const Newsletter = require("../models/newsletter");
 const axios = require("axios");
 const PartnerEarning = require("../models/partnerearning");
 const UserComplaint = require("../models/usercomplaint");
+const Adminactions = require("../models/adminactions");
 const Payout = require("../models/payout");
+const Reviews = require("../models/reviews");
 const crypto = require("crypto");
 const Nodemailer = require("nodemailer");
 const { MailtrapTransport } = require("mailtrap");
 
 const TOKEN = process.env.TOKEN_NEW;
-
 const transport = Nodemailer.createTransport(
   MailtrapTransport({
     token: TOKEN,
   })
 );
-
 const sender = {
   address: "mailtrap@smashapartments.com",
   name: "Smash Apartments",
@@ -105,11 +106,13 @@ const payoutDetails = async (req, res) => {
   try {
     const payout = await Payout.findOne({ userId: req.params.userId });
     if (!payout) {
-      return res.status(404).json({ message: 'Payout details not found' });
+      return res.status(404).json({ message: "Payout details not found" });
     }
     res.json(payout);
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching payout details', error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error fetching payout details", error: error.message });
   }
 };
 const updatePayoutSettings = async (req, res) => {
@@ -216,19 +219,24 @@ const getTotalEarnings = async (req, res) => {
   try {
     const { userId } = req.params;
 
-    // Fetch all earnings for the user
-    const earnings = await PartnerEarning.find({ userId: userId });
+    const vendorPayouts = await VendorPayouts.find({ vendor: userId });
 
-    // Calculate total earnings
-    const totalEarnings = earnings.reduce(
-      (sum, earning) => sum + earning.amount,
+    const totalEarnings = vendorPayouts.reduce(
+      (sum, payout) => sum + payout.amount,
       0
     );
 
-    res.status(200).json({ totalEarnings });
+    res.status(200).json({
+      totalEarnings,
+      payoutCount: vendorPayouts.length,
+      lastUpdated: new Date(),
+    });
   } catch (error) {
     console.error("Error fetching earnings:", error);
-    res.status(500).json({ error: "Failed to fetch earnings" });
+    res.status(500).json({
+      error: "Failed to fetch earnings",
+      message: error.message,
+    });
   }
 };
 
@@ -279,7 +287,7 @@ const getCurrentOfficeSpaces = async (req, res) => {
 
           // Fetch receipts associated with the booking
           const receipts = await Receipts.find({
-            booking_id: booking._id
+            booking_id: booking._id,
           }).lean();
 
           // Return booking with office details, media tags, and receipts
@@ -307,29 +315,24 @@ const getCurrentOfficeSpaces = async (req, res) => {
   }
 };
 
-
 const cancelService = async (req, res) => {
-  const { bookingId } = req.params; // Extract bookingId from the request parameters
+  const { bookingId } = req.params;
 
   try {
-    // Find the booking by ID and update its status to 'cancelled'
     const booking = await ServiceBooking.findByIdAndUpdate(
       bookingId,
       { status: "cancelled" },
       { new: true }
     );
 
-    // If booking not found, return a 404 response
     if (!booking) {
       return res.status(404).json({ message: "Booking not found" });
     }
 
-    // Return a 200 response with the updated booking
     res
       .status(200)
       .json({ message: "Booking cancelled successfully", booking });
   } catch (error) {
-    // Log any error and return a 500 response
     console.error("Error cancelling booking:", error);
     res.status(500).json({ message: "Internal server error" });
   }
@@ -339,24 +342,70 @@ const cancelRental = async (req, res) => {
   const { rentalId } = req.params;
 
   try {
-    // Find the rental by ID and update its status to 'cancelled'
     const rental = await Rental.findByIdAndUpdate(
       rentalId,
       { status: "cancelled" },
       { new: true }
     );
 
-    // If rental not found, return a 404 response
     if (!rental) {
       return res.status(404).json({ message: "Rental not found" });
     }
 
-    // Return a 200 response with the updated rental
     res.status(200).json({ message: "Rental cancelled successfully", rental });
   } catch (error) {
-    // Log any error and return a 500 response
     console.error("Error cancelling rental:", error);
     res.status(500).json({ message: "Internal server error" });
+  }
+};
+const sendRefundPendingEmail = async (email) => {
+  const htmlTemplate = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Refund Appeal Pending Approval</title>
+        <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+    </head>
+    <body style="font-family: 'Montserrat', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <header style="background-color: #ffffff; padding: 20px; text-align: center; border-bottom: 2px solid #221f60;">
+            <h2 style="color: #221f60; font-family: 'Montserrat', Arial, sans-serif; font-weight: 700;">Refund Appeal Pending Approval</h2>
+        </header>
+        
+        <main style="padding: 20px;">
+            <p>Hello,</p>
+            <p>We have received your refund appeal for your recent booking cancellation. Your request is currently under review and pending approval from our administration team.</p>
+            <p>If approved, 50% of the amount you paid will be refunded to you. We appreciate your patience as we complete the review process and aim to resolve this matter promptly.</p>
+            <p>Best regards,</p>
+            <p>The smashapartments.com Team</p>
+        </main>
+        
+        <footer style="background-color: #f4f4f4; padding: 20px; text-align: center; font-size: 12px;">
+            <p>This email is from smashapartments.com. If you have questions, please contact us at: <a href="mailto:support@smashapartments.com" style="color: #ff8c00;">support@smashapartments.com</a></p>
+            <p>&copy; 2024 smashapartments.com. All rights reserved.</p>
+            <p><a href="#" style="color: #ff8c00;">Privacy Policy</a> | <a href="#" style="color: #ff8c00;">Terms of Service</a></p>
+        </footer>
+    </body>
+    </html>
+  `;
+
+  const mailOptions = {
+    from: sender,
+    to: [email],
+    subject: "Refund Appeal Pending Approval",
+    text: "We have received your refund appeal. Your request is currently pending approval, and if approved, you will receive a 50% refund.",
+    html: htmlTemplate,
+    category: "Refund Appeal",
+    
+  };
+
+  try {
+    const result = await transport.sendMail(mailOptions);
+    console.log("Refund pending email sent successfully:", result);
+  } catch (error) {
+    console.error("Error sending refund pending email:", error);
+    throw error;
   }
 };
 
@@ -364,22 +413,34 @@ const cancelBooking = async (req, res) => {
   const { bookingId } = req.params;
 
   try {
-    const booking = await Booking.findByIdAndUpdate(
-      bookingId,
-      { status: "cancelled" },
-      { new: true }
-    );
+    const booking = await Booking.findById(bookingId);
 
     if (!booking) {
       return res.status(404).json({ message: "Booking not found" });
     }
 
+    const user = await User.findById(booking.userId);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    await sendRefundPendingEmail(user.email);
+
+    await Adminactions.create({
+      userId: booking.userId,
+      dataId: booking._id,
+      message: "A new refund appeal has been made",
+      type: "refund_appeal",
+      status: "pending",
+    });
+
     res
       .status(200)
-      .json({ message: "Booking cancelled successfully", booking });
+      .json({ message: "Booking cancelled and refund pending email sent" });
   } catch (error) {
-    console.error("Error cancelling booking:", error);
-    res.status(500).json({ message: "Internal server error" });
+    console.error("Error in cancelBooking:", error);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
@@ -474,14 +535,12 @@ const getNewsletter = async (req, res) => {
     return res.status(500).json({ message: "An error occurred" });
   }
 };
-
 const getRentalDetails = async (req, res) => {
   try {
     const { id } = req.params; // Get rental ID from request parameters
 
     // Fetch rental data by ID
     const rental = await CarRental.findById(id).lean();
-
     if (!rental) {
       return res.status(404).json({ error: "Car rental listing not found" });
     }
@@ -489,16 +548,36 @@ const getRentalDetails = async (req, res) => {
     // Fetch associated images
     const images = await MediaTag.find({ listing_id: id }).lean();
 
-    // Combine rental data with images and construct image URLs
-    const rentalWithImages = {
+    // Fetch reviews associated with the rental
+    const reviewData = await Reviews.aggregate([
+      { $match: { listingId: rental._id } },
+      {
+        $group: {
+          _id: "$listingId",
+          averageRating: { $avg: { $toDouble: "$rating" } },
+          reviewCount: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const averageRating =
+      reviewData.length > 0
+        ? Number(reviewData[0].averageRating.toFixed(1))
+        : null;
+    const reviewCount = reviewData.length > 0 ? reviewData[0].reviewCount : 0;
+
+    // Combine rental data with images and reviews
+    const rentalWithDetails = {
       ...rental,
       images: images.map((image) => ({
         ...image,
         url: `${image.media_location}`, // Construct image URL
       })),
+      reviewCount,
+      averageRating,
     };
 
-    res.status(200).json(rentalWithImages);
+    res.status(200).json(rentalWithDetails);
   } catch (error) {
     console.error("Error fetching rental data:", error);
     res.status(500).json({ error: "Failed to fetch rental data" });
@@ -575,20 +654,40 @@ const getRentals = async (req, res) => {
         .lean();
     }
 
-    // Fetch images for each rental
-    const rentalsWithImages = await Promise.all(
+    // Aggregate to get the average rating and review count for each rental
+    const rentalsWithDetails = await Promise.all(
       rentals.map(async (rental) => {
         const images = await MediaTag.find({ listing_id: rental._id }).lean();
+
+        // Aggregate ratings and review count
+        const reviewData = await Reviews.aggregate([
+          { $match: { listingId: rental._id } },
+          {
+            $group: {
+              _id: "$listingId",
+              averageRating: { $avg: { $toDouble: "$rating" } },
+              reviewCount: { $sum: 1 },
+            },
+          },
+        ]);
+
+        const averageRating =
+          reviewData.length > 0
+            ? Number(reviewData[0].averageRating.toFixed(1))
+            : null;
+        const reviewCount =
+          reviewData.length > 0 ? reviewData[0].reviewCount : 0;
+
         return {
           ...rental,
           images,
-          ratings: Math.random() * 5, // Random rating between 0 and 5
-          reviews: Math.floor(Math.random() * 500), // Random number of reviews
+          averageRating,
+          reviewCount,
         };
       })
     );
 
-    res.status(200).json(rentalsWithImages);
+    res.status(200).json(rentalsWithDetails);
   } catch (error) {
     console.error("Error fetching rentals:", error);
     res.status(500).json({ error: "Failed to fetch rentals" });
@@ -655,11 +754,17 @@ const reserveAndBookPickup = async (req, res) => {
       arrivalTime,
       totalPrice,
       paymentReference: reference,
-      status: "confirmed",
+      status: "pending",
     });
 
     await newServiceBooking.save();
-
+    await sendNewBookingEmailPickup(decoded.email, {
+      serviceId,
+      arrivalDate: arrivalDate,
+      arrivalTime: arrivalTime,
+      totalAmount: totalPrice,
+    });
+    await sendNewBookingNotificationToOwnerPickup(serviceId);
     res.status(201).json({
       message:
         "Payment verified and pickup service booking created successfully",
@@ -692,16 +797,37 @@ const getPickupData = async (req, res) => {
     // Fetch associated images
     const images = await MediaTag.find({ listing_id: id }).lean();
 
-    // Combine service data with images and construct image URLs
-    const serviceWithImages = {
+    // Aggregate to get the average rating and review count for the service
+    const reviewData = await Reviews.aggregate([
+      { $match: { listingId: service._id } },
+      {
+        $group: {
+          _id: "$listing_id",
+          averageRating: { $avg: { $toDouble: "$rating" } },
+          reviewCount: { $sum: 1 },
+        },
+      },
+    ]);
+
+    // Check if reviewData has values and round the averageRating to 1 decimal place
+    const averageRating =
+      reviewData.length > 0
+        ? Number(reviewData[0].averageRating.toFixed(1))
+        : null;
+    const reviewCount = reviewData.length > 0 ? reviewData[0].reviewCount : 0;
+
+    // Combine service data with images, rating, and review count
+    const serviceWithDetails = {
       ...service,
       images: images.map((image) => ({
         ...image,
         url: `${image.media_location}`, // Construct image URL
       })),
+      averageRating,
+      reviewCount,
     };
 
-    res.status(200).json(serviceWithImages);
+    res.status(200).json(serviceWithDetails);
   } catch (error) {
     console.error("Error fetching pickup service data:", error);
     res.status(500).json({ error: "Failed to fetch pickup service data" });
@@ -719,6 +845,7 @@ const getPickups = async (req, res) => {
       maxPrice,
       availableFrom,
       availableTo,
+      ratings, // Added for rating filter
       limit,
       offset,
     } = req.query;
@@ -761,26 +888,53 @@ const getPickups = async (req, res) => {
       .lean();
 
     if (pickups.length === 0) {
-
       pickups = await Service.find()
         .skip(Number(offset) || 0)
         .limit(Number(limit) || 10)
         .lean();
     }
 
-    const pickupsWithImages = await Promise.all(
+    // Calculate average rating and count of reviews for each pickup and add images
+    const pickupsWithDetails = await Promise.all(
       pickups.map(async (pickup) => {
         const images = await MediaTag.find({ listing_id: pickup._id }).lean();
-        return { ...pickup, images };
+
+        // Aggregate to get the average rating and review count for the pickup
+        const reviewData = await Reviews.aggregate([
+          { $match: { listingId: pickup._id } },
+          {
+            $group: {
+              _id: "$listing_id",
+              averageRating: { $avg: { $toDouble: "$rating" } },
+              reviewCount: { $sum: 1 },
+            },
+          },
+        ]);
+
+        // Check if reviewData has values and round the averageRating to 1 decimal place
+        const averageRating =
+          reviewData.length > 0
+            ? Number(reviewData[0].averageRating.toFixed(1))
+            : null;
+        const reviewCount =
+          reviewData.length > 0 ? reviewData[0].reviewCount : 0;
+
+        return { ...pickup, images, averageRating, reviewCount };
       })
     );
 
-    res.status(200).json(pickupsWithImages);
+    // Filter pickups to include only those with the specified average rating
+    const filteredPickups = pickupsWithDetails.filter(
+      (pickup) => !ratings || pickup.averageRating === Number(ratings)
+    );
+
+    res.status(200).json(filteredPickups);
   } catch (error) {
     console.error("Error fetching pickups:", error);
     res.status(500).json({ error: "Failed to fetch pickups" });
   }
 };
+
 const getCurrentPickups = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -792,7 +946,9 @@ const getCurrentPickups = async (req, res) => {
     }).lean();
 
     if (!pickups.length) {
-      return res.status(404).json({ error: "No airport pickups found for this user" });
+      return res
+        .status(404)
+        .json({ error: "No airport pickups found for this user" });
     }
 
     // Fetch associated service details, media, and receipts for each pickup
@@ -800,14 +956,18 @@ const getCurrentPickups = async (req, res) => {
       pickups.map(async (pickup) => {
         try {
           // Fetch service details
-          const serviceDetails = await Service.findById(pickup.serviceId).lean();
-          
+          const serviceDetails = await Service.findById(
+            pickup.serviceId
+          ).lean();
+
           // Fetch associated media
-          const media = await MediaTag.find({ listing_id: pickup.serviceId }).lean();
+          const media = await MediaTag.find({
+            listing_id: pickup.serviceId,
+          }).lean();
 
           // Fetch receipts based on pickup's booking ID
           const receipts = await Receipts.find({
-            booking_id: pickup._id
+            booking_id: pickup._id,
           }).lean();
 
           // Return pickup with service details, media, and receipts
@@ -816,18 +976,22 @@ const getCurrentPickups = async (req, res) => {
             serviceDetails,
             media, // Include media in the response
             receipts, // Include receipts in the response
-            driverPhoneNumber: serviceDetails?.driverPhoneNumber || "Not provided",
+            driverPhoneNumber:
+              serviceDetails?.driverPhoneNumber || "Not provided",
             driverEmail: serviceDetails?.driverEmail || "Not provided",
             carMakeModel: serviceDetails?.carMakeModel || "Unknown",
             carColor: serviceDetails?.carColor || "Unknown",
           };
         } catch (err) {
-          console.error(`Error fetching details for pickup ${pickup._id}:`, err);
+          console.error(
+            `Error fetching details for pickup ${pickup._id}:`,
+            err
+          );
           return pickup; // Return pickup with default values if there's an error
         }
       })
     );
-    
+
     res.status(200).json(pickupsWithDetails);
   } catch (error) {
     console.error("Error fetching user pickups:", error);
@@ -835,13 +999,12 @@ const getCurrentPickups = async (req, res) => {
   }
 };
 
-
 const getCoOfficeData = async (req, res) => {
   try {
     const { id } = req.params; // Get cooffice ID from request parameters
+
     // Fetch cooffice data by ID
     const cooffice = await OfficeSpace.findById(id).lean();
-
     if (!cooffice) {
       return res.status(404).json({ error: "CoOffice listing not found" });
     }
@@ -849,19 +1012,68 @@ const getCoOfficeData = async (req, res) => {
     // Fetch associated images
     const images = await MediaTag.find({ listing_id: id }).lean();
 
-    // Combine cooffice data with images and construct image URLs
-    const coofficeWithImages = {
+    // Fetch review data: calculate average rating and review count for the cooffice
+    const reviewData = await Reviews.aggregate([
+      { $match: { listingId: cooffice._id } }, // Match reviews for the specific cooffice
+      {
+        $group: {
+          _id: "$listing_id",
+          averageRating: { $avg: { $toDouble: "$rating" } }, // Calculate average rating
+          reviewCount: { $sum: 1 }, // Count the number of reviews
+        },
+      },
+    ]);
+
+    const averageRating =
+      reviewData.length > 0
+        ? Number(reviewData[0].averageRating.toFixed(1))
+        : null;
+    const reviewCount = reviewData.length > 0 ? reviewData[0].reviewCount : 0;
+
+    // Combine cooffice data with images, review stats, and construct image URLs
+    const coofficeWithDetails = {
       ...cooffice,
       images: images.map((image) => ({
         ...image,
         url: `${image.media_location}`, // Construct image URL
       })),
+      averageRating,
+      reviewCount,
     };
 
-    res.status(200).json(coofficeWithImages);
+    res.status(200).json(coofficeWithDetails);
   } catch (error) {
     console.error("Error fetching cooffice data:", error);
     res.status(500).json({ error: "Failed to fetch cooffice data" });
+  }
+};
+
+const PendingActions = async (req, res) => {
+  try {
+    const actions = await Adminactions.find({ status: "pending" }).lean();
+    res.status(200).json(actions);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch pending actions" });
+  }
+};
+const UpdateActionStatus = async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+
+  try {
+    const action = await Adminactions.findByIdAndUpdate(
+      id,
+      { status },
+      { new: true }
+    );
+
+    if (!action) return res.status(404).json({ error: "Action not found" });
+
+    res
+      .status(200)
+      .json({ message: "Action status updated successfully", action });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to update action status" });
   }
 };
 
@@ -869,7 +1081,6 @@ const getCurrentRentals = async (req, res) => {
   try {
     const { userId } = req.params;
 
-    // Fetch rentals with status 'confirmed', 'reserved', 'cancelled', or 'ended'
     const rentals = await Rental.find({
       userId,
       status: { $in: ["confirmed", "reserved", "cancelled", "ended"] },
@@ -879,22 +1090,19 @@ const getCurrentRentals = async (req, res) => {
       return res.status(404).json({ error: "No rentals found for this user" });
     }
 
-    // Fetch associated car rental details and media for each rental
     const rentalsWithDetails = await Promise.all(
       rentals.map(async (rental) => {
         try {
-          // Fetch car rental details
           const carRental = await CarRental.findById(rental.rentalId).lean();
 
-          // Fetch associated media
           const media = await MediaTag.find({
             listing_id: rental.rentalId,
           }).lean();
 
-          // Fetch uploaded receipts for this rental
-          const receipts = await Receipts.find({ booking_id: rental._id }).lean();
+          const receipts = await Receipts.find({
+            booking_id: rental._id,
+          }).lean();
 
-          // Return rental with car rental details, media, and receipts
           return {
             ...rental,
             carRentalDetails: carRental,
@@ -902,14 +1110,14 @@ const getCurrentRentals = async (req, res) => {
             driverPhoneNumber: carRental?.driverPhoneNumber || "Not provided",
             driverEmail: carRental?.driverEmail || "Not provided",
             carNameModel: carRental?.carNameModel || "Unknown",
-            receipts, // Add receipts to the rental details
+            receipts,
           };
         } catch (err) {
           console.error(
             `Error fetching details for rental ${rental._id}:`,
             err
           );
-          return rental; // Return rental with default values if there's an error
+          return rental;
         }
       })
     );
@@ -927,32 +1135,28 @@ const getCurrentBookings = async (req, res) => {
 
     const bookings = await Booking.find({
       userId,
-
-      status: { $in: ["confirmed", "reserved", "cancelled", "ended"] },
-
+      status: {
+        $in: ["confirmed", "reserved", "cancelled", "ended", "pending"],
+      },
     }).lean();
 
     if (!bookings.length) {
       return res.status(404).json({ error: "No bookings found for this user" });
     }
 
-   
     const bookingsWithDetails = await Promise.all(
       bookings.map(async (booking) => {
         try {
-         
           const media = await MediaTag.find({
             listing_id: booking.listingId,
           }).lean();
 
-     
           const stayListing = await StayListing.findById(
             booking.listingId
           ).lean();
 
-      
           const receipts = await Receipts.find({
-            booking_id: booking._id
+            booking_id: booking._id,
           }).lean();
 
           return {
@@ -970,12 +1174,12 @@ const getCurrentBookings = async (req, res) => {
             `Error fetching details for booking ${booking._id}:`,
             err
           );
-          return booking; 
+          return booking;
         }
       })
     );
 
-    res.status(200).json(bookingsWithDetails);
+    res.status(200).json(bookingsWithDetails.reverse()); // Reverse to ascending order
   } catch (error) {
     console.error("Error fetching user bookings:", error);
     res.status(500).json({ error: "Failed to fetch user bookings" });
@@ -986,7 +1190,6 @@ const getUserBookings = async (req, res) => {
   try {
     const { userId } = req.params;
 
-   
     const [
       totalBookingCount,
       totalCoofficeCount,
@@ -1041,18 +1244,23 @@ const getUsers = async (req, res) => {
   }
 };
 
-async function aggregateRevenueFromSchema(schema, schemaName, dateField = 'createdAt', priceField = 'totalPrice') {
+async function aggregateRevenueFromSchema(
+  schema,
+  schemaName,
+  dateField = "createdAt",
+  priceField = "totalPrice"
+) {
   try {
     return await schema.aggregate([
       {
         $group: {
           _id: {
-            $dateToString: { format: "%Y-%m-%d", date: `$${dateField}` }
+            $dateToString: { format: "%Y-%m-%d", date: `$${dateField}` },
           },
-          totalRevenue: { $sum: `$${priceField}` } // Sum up the revenue using the correct price field
-        }
+          totalRevenue: { $sum: `$${priceField}` }, // Sum up the revenue using the correct price field
+        },
       },
-      { $sort: { _id: 1 } }
+      { $sort: { _id: 1 } },
     ]);
   } catch (error) {
     console.error(`Error aggregating revenue from ${schemaName}:`, error);
@@ -1060,30 +1268,41 @@ async function aggregateRevenueFromSchema(schema, schemaName, dateField = 'creat
   }
 }
 
-
 const revenue = async (req, res) => {
   try {
     const revenueData = await Promise.all([
-      aggregateRevenueFromSchema(ServiceBooking, 'ServiceBooking', 'createdAt', 'totalPrice'),
-      aggregateRevenueFromSchema(Rental, 'Rental', 'createdAt', 'rentalPrice'),
-      aggregateRevenueFromSchema(CoofficeBooking, 'CoofficeBooking', 'createdAt', 'totalPrice'),
-      aggregateRevenueFromSchema(Booking, 'Booking', 'createdAt', 'totalPrice') // Use createdAt for bookings
+      aggregateRevenueFromSchema(
+        ServiceBooking,
+        "ServiceBooking",
+        "createdAt",
+        "totalPrice"
+      ),
+      aggregateRevenueFromSchema(Rental, "Rental", "createdAt", "rentalPrice"),
+      aggregateRevenueFromSchema(
+        CoofficeBooking,
+        "CoofficeBooking",
+        "createdAt",
+        "totalPrice"
+      ),
+      aggregateRevenueFromSchema(Booking, "Booking", "createdAt", "totalPrice"), // Use createdAt for bookings
     ]);
 
     // Combine all the revenue data
     const combinedData = revenueData.flat();
 
-    const dates = combinedData.map(item => item._id);
-    const amounts = combinedData.map(item => item.totalRevenue);
+    const dates = combinedData.map((item) => item._id);
+    const amounts = combinedData.map((item) => item.totalRevenue);
 
     res.json({
       dates,
       amounts,
-      total: amounts.reduce((acc, curr) => acc + curr, 0)
+      total: amounts.reduce((acc, curr) => acc + curr, 0),
     });
   } catch (error) {
-    console.error('Error fetching revenue data:', error);
-    res.status(500).json({ message: 'Error fetching revenue data', error: error.message });
+    console.error("Error fetching revenue data:", error);
+    res
+      .status(500)
+      .json({ message: "Error fetching revenue data", error: error.message });
   }
 };
 
@@ -1129,12 +1348,12 @@ async function aggregateBookingsFromSchema(schema) {
     {
       $group: {
         _id: {
-          $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } // Use createdAt
+          $dateToString: { format: "%Y-%m-%d", date: "$createdAt" }, // Use createdAt
         },
-        count: { $sum: 1 }
-      }
+        count: { $sum: 1 },
+      },
     },
-    { $sort: { _id: 1 } }
+    { $sort: { _id: 1 } },
   ]);
 }
 const bookingsOverTime = async (req, res) => {
@@ -1143,17 +1362,19 @@ const bookingsOverTime = async (req, res) => {
       aggregateBookingsFromSchema(ServiceBooking),
       aggregateBookingsFromSchema(Rental),
       aggregateBookingsFromSchema(CoofficeBooking),
-      aggregateBookingsFromSchema(Booking)
+      aggregateBookingsFromSchema(Booking),
     ]);
 
     const combinedData = bookingsData.flat();
 
-    const dates = combinedData.map(item => item._id);
-    const counts = combinedData.map(item => item.count);
+    const dates = combinedData.map((item) => item._id);
+    const counts = combinedData.map((item) => item.count);
 
     res.json({ dates, counts });
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching bookings over time data', error });
+    res
+      .status(500)
+      .json({ message: "Error fetching bookings over time data", error });
   }
 };
 
@@ -1161,15 +1382,15 @@ async function aggregateRevenueByListingFromSchema(schema) {
   return await schema.aggregate([
     {
       $match: {
-        listingId: { $exists: true, $ne: null } // Ensure listingId is present
-      }
+        listingId: { $exists: true, $ne: null }, // Ensure listingId is present
+      },
     },
     {
       $group: {
         _id: "$listingId", // Group by listingId
-        totalRevenue: { $sum: "$totalPrice" } // Sum the totalPrice
-      }
-    }
+        totalRevenue: { $sum: "$totalPrice" }, // Sum the totalPrice
+      },
+    },
   ]);
 }
 
@@ -1179,27 +1400,31 @@ const revenueByListing = async (req, res) => {
       aggregateRevenueByListingFromSchema(ServiceBooking),
       aggregateRevenueByListingFromSchema(Rental),
       aggregateRevenueByListingFromSchema(CoofficeBooking),
-      aggregateRevenueByListingFromSchema(Booking)
+      aggregateRevenueByListingFromSchema(Booking),
     ]);
 
     // Combine all the revenue by listing data
     const combinedData = revenueByListingData.flat();
 
     // If listingId is an ObjectId, convert it to a string for labels
-    const labels = combinedData.map(item => item._id ? item._id.toString() : "Unknown Listing"); // Fallback for missing listingId
-    const revenues = combinedData.map(item => item.totalRevenue);
+    const labels = combinedData.map((item) =>
+      item._id ? item._id.toString() : "Unknown Listing"
+    ); // Fallback for missing listingId
+    const revenues = combinedData.map((item) => item.totalRevenue);
 
     res.json({ labels, revenues });
   } catch (error) {
     console.error(error); // Log the error for debugging
-    res.status(500).json({ message: 'Error fetching revenue by listing type data', error });
+    res
+      .status(500)
+      .json({ message: "Error fetching revenue by listing type data", error });
   }
 };
-const userAnalytics =  async (req, res) => {
+const userAnalytics = async (req, res) => {
   try {
     const totalUsers = await User.countDocuments();
-    const activeUsers = await User.countDocuments({ status: 'active' });
-    const inactiveUsers = await User.countDocuments({ status: 'inactive' });
+    const activeUsers = await User.countDocuments({ status: "active" });
+    const inactiveUsers = await User.countDocuments({ status: "inactive" });
 
     res.json({
       totalUsers,
@@ -1220,18 +1445,18 @@ const bookingData = async (req, res) => {
       return await Model.aggregate([
         {
           $match: {
-            createdAt: { $gte: startDate, $lte: endDate }
-          }
+            createdAt: { $gte: startDate, $lte: endDate },
+          },
         },
         {
           $group: {
             _id: { $month: "$createdAt" },
-            count: { $sum: 1 }
-          }
+            count: { $sum: 1 },
+          },
         },
         {
-          $sort: { "_id": 1 }
-        }
+          $sort: { _id: 1 },
+        },
       ]);
     };
 
@@ -1240,74 +1465,93 @@ const bookingData = async (req, res) => {
         {
           $group: {
             _id: "$status",
-            count: { $sum: 1 }
-          }
-        }
+            count: { $sum: 1 },
+          },
+        },
       ]);
     };
 
-    const [staysBookings, coofficeBookings, rentalBookings, serviceBookings] = await Promise.all([
-      aggregateBookings(Booking),
-      aggregateBookings(CoofficeBooking),
-      aggregateBookings(Rental),
-      aggregateBookings(ServiceBooking)
-    ]);
+    const [staysBookings, coofficeBookings, rentalBookings, serviceBookings] =
+      await Promise.all([
+        aggregateBookings(Booking),
+        aggregateBookings(CoofficeBooking),
+        aggregateBookings(Rental),
+        aggregateBookings(ServiceBooking),
+      ]);
 
-    const [staysStatuses, coofficeStatuses, rentalStatuses, serviceStatuses] = await Promise.all([
-      countStatuses(Booking),
-      countStatuses(CoofficeBooking),
-      countStatuses(Rental),
-      countStatuses(ServiceBooking)
-    ]);
+    const [staysStatuses, coofficeStatuses, rentalStatuses, serviceStatuses] =
+      await Promise.all([
+        countStatuses(Booking),
+        countStatuses(CoofficeBooking),
+        countStatuses(Rental),
+        countStatuses(ServiceBooking),
+      ]);
 
     const monthlyData = Array(12).fill(0);
-    [staysBookings, coofficeBookings, rentalBookings, serviceBookings].forEach(bookings => {
-      bookings.forEach(booking => {
-        monthlyData[booking._id - 1] += booking.count;
-      });
-    });
+    [staysBookings, coofficeBookings, rentalBookings, serviceBookings].forEach(
+      (bookings) => {
+        bookings.forEach((booking) => {
+          monthlyData[booking._id - 1] += booking.count;
+        });
+      }
+    );
 
     const statusCounts = {
       pending: 0,
       confirmed: 0,
       reserved: 0,
       cancelled: 0,
-      ended: 0
+      ended: 0,
     };
 
-    [staysStatuses, coofficeStatuses, rentalStatuses, serviceStatuses].forEach(statuses => {
-      statuses.forEach(status => {
-        if (statusCounts.hasOwnProperty(status._id)) {
-          statusCounts[status._id] += status.count;
-        }
-      });
-    });
+    [staysStatuses, coofficeStatuses, rentalStatuses, serviceStatuses].forEach(
+      (statuses) => {
+        statuses.forEach((status) => {
+          if (statusCounts.hasOwnProperty(status._id)) {
+            statusCounts[status._id] += status.count;
+          }
+        });
+      }
+    );
 
     res.json({
-      months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+      months: [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec",
+      ],
       counts: monthlyData,
-      statusCounts
+      statusCounts,
     });
   } catch (error) {
-    console.error('Error fetching booking data:', error);
-    res.status(500).json({ message: 'Error fetching booking data' });
+    console.error("Error fetching booking data:", error);
+    res.status(500).json({ message: "Error fetching booking data" });
   }
-}
-const usersJoiningOverTime =  async (req, res) => {
+};
+const usersJoiningOverTime = async (req, res) => {
   try {
     const usersOverTime = await User.aggregate([
       {
         $group: {
-          _id: { 
-            year: { $year: "$date_joined" }, 
-            month: { $month: "$date_joined" } 
+          _id: {
+            year: { $year: "$date_joined" },
+            month: { $month: "$date_joined" },
           },
-          count: { $sum: 1 }
-        }
+          count: { $sum: 1 },
+        },
       },
       {
-        $sort: { "_id.year": 1, "_id.month": 1 } // Sorting by year and month
-      }
+        $sort: { "_id.year": 1, "_id.month": 1 }, // Sorting by year and month
+      },
     ]);
 
     res.status(200).json(usersOverTime);
@@ -1316,8 +1560,6 @@ const usersJoiningOverTime =  async (req, res) => {
     res.status(500).json({ message: "Server Error" });
   }
 };
-
-
 
 const updateUserStatus = async (req, res) => {
   const { userId, status } = req.body;
@@ -1338,11 +1580,147 @@ const updateUserStatus = async (req, res) => {
   }
 };
 
+const MakePayout = async (req, res) => {
+  try {
+    const { vendor, booking, listing, amount, date, remark } = req.body;
+    const payout = new VendorPayouts({
+      vendor,
+      booking,
+      listing,
+      amount,
+      date,
+      remark,
+    });
+
+    // Save the payout record
+    const savedPayout = await payout.save();
+
+    try {
+      // Send email notification
+      await sendPayoutNotificationToVendor(savedPayout._id);
+
+      res.status(201).json({
+        message: "Payout added successfully and notification sent",
+        payoutId: savedPayout._id,
+      });
+    } catch (emailError) {
+      // If email fails, log the error but don't fail the whole operation
+      console.error("Failed to send payout notification:", emailError);
+      res.status(201).json({
+        message: "Payout added successfully but notification failed",
+        payoutId: savedPayout._id,
+      });
+    }
+  } catch (error) {
+    console.error("Error in MakePayout:", error);
+    res.status(500).json({
+      error: "Failed to add payout",
+      details: error.message,
+    });
+  }
+};
+const sendPayoutNotificationToVendor = async (payoutId) => {
+  // Fetch payout with populated booking details
+  const payout = await VendorPayouts.findById(payoutId).lean();
+
+  // Fetch vendor details
+  const vendor = await User.findById(payout.vendor).lean();
+  const vendorEmail = vendor.email;
+  const vendorName = vendor.first_name;
+
+  // Format the date nicely
+  const formattedDate = new Date(payout.date).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
+  const htmlTemplate = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payout Notification from smashapartments.com</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body style="font-family: 'Montserrat', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <header style="background-color: #ffffff; padding: 20px; text-align: center; border-bottom: 2px solid #221f60;">
+        <svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="100px" height="100px" viewBox="0 0 1000 1000" style="shape-rendering:geometricPrecision; text-rendering:geometricPrecision; image-rendering:optimizeQuality; fill-rule:evenodd; clip-rule:evenodd">
+            <!-- SVG path data here -->
+        </svg>
+    </header>
+    
+    <main style="padding: 20px;">
+        <h1 style="color: #221f60; font-family: 'Montserrat', Arial, sans-serif; font-weight: 700;">Payout Notification</h1>
+        <p>Hello, ${vendorName}</p>
+        <p>We are pleased to inform you that a payout has been processed for your account on smashapartments.com.</p>
+        
+        <div style="background-color: #f8f8f8; padding: 20px; margin: 20px 0; border-radius: 5px;">
+            <h2 style="color: #221f60; margin-top: 0;">Payout Details:</h2>
+            <p><strong>Amount:</strong> NGN ${payout.amount.toFixed(2)}</p>
+            <p><strong>Date:</strong> ${formattedDate}</p>
+            <p><strong>Booking Reference:</strong> ${payout.booking}</p>
+            <p><strong>Remark:</strong> ${payout.remark}</p>
+        </div>
+
+        <div style="margin: 20px 0; padding: 15px; border-left: 4px solid #ff8c00; background-color: #fff4e6;">
+            <p style="margin: 0;"><strong>Important:</strong> Please keep your booking reference number <strong>${
+              payout.booking
+            }</strong> for your records. You may need this for any future correspondence.</p>
+        </div>
+
+        <p>The funds have been processed according to your payment preferences. Please allow 2-3 business days for the amount to reflect in your account.</p>
+        <p>If you have any questions about this payout, please don't hesitate to contact our support team and reference your booking number.</p>
+        
+     
+        
+        <p>Best regards,<br>The smashapartments.com Team</p>
+    </main>
+    
+    <footer style="background-color: #f4f4f4; padding: 20px; text-align: center; font-size: 12px;">
+        <p>This email is from smashapartments.com regarding your recent payout.</p>
+        <p>For support, please contact us at: <a href="mailto:support@smashapartments.com" style="color: #ff8c00;">support@smashapartments.com</a></p>
+        <p>&copy; 2024 smashapartments.com. All rights reserved.</p>
+        <p><a href="#" style="color: #ff8c00;">Privacy Policy</a> | <a href="#" style="color: #ff8c00;">Terms of Service</a></p>
+    </footer>
+</body>
+</html>
+  `;
+
+  const mailOptions = {
+    from: sender,
+    to: [vendorEmail],
+    subject: `Payout Processed - NGN ${payout.amount.toFixed(
+      2
+    )} - smashapartments.com`,
+    text: `A payout of NGN ${payout.amount.toFixed(
+      2
+    )} has been processed for your account (Booking Reference: ${
+      payout.booking
+    }). Remark: ${payout.remark}. 
+    
+Please keep your booking reference number for your records.
+
+Please allow 2-3 business days for the amount to reflect in your account.
+`,
+    html: htmlTemplate,
+    category: "Payout Notification",
+    
+  };
+
+  try {
+    const result = await transport.sendMail(mailOptions);
+    console.log("Payout notification email sent successfully:", result);
+  } catch (error) {
+    console.error("Error sending payout notification email:", error);
+    throw error;
+  }
+};
 const getAllListingsGeneral = async (req, res) => {
   try {
     const { ownerId } = req.params;
 
-    // Fetch all listings for the given owner irrespective of their status
     const stayListings = await StayListing.find().lean();
 
     const services = await Service.find().lean();
@@ -1476,24 +1854,72 @@ const getAllListings = async (req, res) => {
   }
 };
 
+// const updatebookingstatus = async (req, res) => {
+//   const { bookingId, status, type } = req.body;
+
+//   try {
+//     let booking;
+
+//     switch (type) {
+//       case "service":
+//         booking = await ServiceBooking.findById(bookingId);
+//         break;
+//       case "rental":
+//         booking = await Rental.findById(bookingId);
+//         break;
+//       case "cooffice":
+//         booking = await CoofficeBooking.findById(bookingId);
+//         break;
+//       case "stay":
+//         booking = await Booking.findById(bookingId);
+//         break;
+//       default:
+//         return res.status(400).json({ error: "Invalid booking type" });
+//     }
+
+//     if (!booking) {
+//       return res.status(404).json({ error: "Booking not found" });
+//     }
+
+//     // Update the status
+//     booking.status = status;
+
+//     // Save the updated booking
+//     await booking.save();
+
+//     res
+//       .status(200)
+//       .json({ message: "Booking status updated successfully", booking });
+//   } catch (error) {
+//     console.error(error);
+//     res
+//       .status(500)
+//       .json({ error: "An error occurred while updating the booking status" });
+//   }
+// };
 const updatebookingstatus = async (req, res) => {
   const { bookingId, status, type } = req.body;
 
   try {
     let booking;
+    let userId;
 
     switch (type) {
       case "service":
         booking = await ServiceBooking.findById(bookingId);
+        userId = booking.userId;
         break;
       case "rental":
         booking = await Rental.findById(bookingId);
+        userId = booking.userId;
         break;
-      case "cooffice":
+      case "office":
         booking = await CoofficeBooking.findById(bookingId);
+        userId = booking.userId;
         break;
       case "stay":
         booking = await Booking.findById(bookingId);
+        userId = booking.userId;
         break;
       default:
         return res.status(400).json({ error: "Invalid booking type" });
@@ -1503,11 +1929,46 @@ const updatebookingstatus = async (req, res) => {
       return res.status(404).json({ error: "Booking not found" });
     }
 
-    // Update the status
     booking.status = status;
 
-    // Save the updated booking
     await booking.save();
+
+    if (status === "checkedin") {
+      await sendCheckinNotification(bookingId, type);
+    }
+
+    if (status === "confirmed") {
+      const user = await User.findById(userId);
+      const email = user.email;
+
+      let propertyName;
+      let securityLevyData;
+      if (type === "stay") {
+        const stayListing = await StayListing.findById(
+          booking.listingId
+        ).lean();
+        propertyName = stayListing.property_name;
+        securityLevyData = stayListing.security_levy;
+      } else if (type === "office") {
+        const officeSpace = await OfficeSpace.findById(booking.officeId).lean();
+        propertyName = officeSpace.office_space_name;
+        securityLevyData = officeSpace.security_levy;
+      } else if (type === "rental") {
+        const rentalItem = await Rental.findById(booking.rentalId).lean();
+        propertyName = "Ride rental";
+      } else if (type === "service") {
+        const serviceItem = await Service.findById(booking.serviceId).lean();
+        propertyName = "Pickup";
+      }
+
+      await sendConfirmatoryEmail(
+        email,
+        booking,
+        propertyName,
+        securityLevyData,
+        type
+      );
+    }
 
     res
       .status(200)
@@ -1520,21 +1981,171 @@ const updatebookingstatus = async (req, res) => {
   }
 };
 
+const sendCheckinNotification = async (bookingId, type) => {
+  const htmlTemplate = `
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Check-in Notification</title>
+  </head>
+  <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+      <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #221f60;">New Check-in Alert</h2>
+          <p>A customer has checked in for their booking.</p>
+          <p><strong>Booking Details:</strong></p>
+          <ul>
+              <li>Booking ID: ${bookingId}</li>
+              <li>Booking Type: ${type}</li>
+          </ul>
+          <p>Please review the booking details in the admin dashboard.</p>
+      </div>
+  </body>
+  </html>
+  `;
+
+  const mailOptions = {
+    from: sender,
+    to: "support@smashapartment.com",
+    subject: "New Check-in Alert",
+    html: htmlTemplate,
+    category: "Check-in Notification",
+    
+  };
+
+  try {
+    const result = await transport.sendMail(mailOptions);
+    console.log("Check-in notification sent successfully:", result);
+  } catch (error) {
+    console.error("Error sending check-in notification:", error);
+    throw error;
+  }
+};
+
+const sendConfirmatoryEmail = async (
+  email,
+  booking,
+  propertyName,
+  securityLevyData,
+  type
+) => {
+  let subject, titleText;
+  if (type === "rental") {
+    subject = "Your new rental has been confirmed";
+    titleText = "Your new rental has been confirmed";
+  } else if (type === "service") {
+    subject = "Your new pickup has been confirmed";
+    titleText = "Your new pickup has been confirmed";
+  } else {
+    subject = "Your smashapartments.com Booking Confirmation";
+    titleText = "Your Booking at {propertyName} is Confirmed";
+  }
+
+  const htmlTemplate = `
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>${subject}</title>
+      <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+  </head>
+  <body style="font-family: 'Montserrat', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <header style="background-color: #ffffff; padding: 20px; text-align: center; border-bottom: 2px solid #221f60;">
+          <svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="100px" height="100px" viewBox="0 0 1000 1000" style="shape-rendering:geometricPrecision; text-rendering:geometricPrecision; image-rendering:optimizeQuality; fill-rule:evenodd; clip-rule:evenodd">
+              <!-- SVG path data here -->
+          </svg>
+      </header>
+      
+      <main style="padding: 20px;">
+          <h1 style="color: #221f60; font-family: 'Montserrat', Arial, sans-serif; font-weight: 700;">${titleText.replace(
+            "{propertyName}",
+            propertyName
+          )}</h1>
+          <p>Hello,</p>
+          <p>We're pleased to inform you that your booking request for ${propertyName} has been confirmed.</p>
+
+          ${
+            (type === "stay" || type === "office") &&
+            securityLevyData &&
+            securityLevyData !== ""
+              ? `
+          <div style="background-color: #f8f8f8; padding: 20px; border-radius: 5px; margin: 20px 0;">
+              <h2 style="color: #ff8c00; margin-top: 0;">Security Levy</h2>
+              <p>Please note that there is a security levy deposit associated with your booking. The terms and conditions for this deposit are as follows:</p>
+              <ul>
+                <li>The security levy is a refundable deposit that will be returned to you at the end of your rental period, provided there are no damages or outstanding fees.</li>
+                <li>The amount of the security levy is ${securityLevyData}.</li>
+                <li>The security levy must be paid prior to the start of your rental period.</li>
+                <li>If there are any damages or outstanding fees, the security levy (or a portion of it) will be used to cover these costs.</li>
+                <li>The security levy will be refunded to you within 14 days of the end of your rental period, provided there are no issues.</li>
+              </ul>
+          </div>
+          `
+              : ""
+          }
+
+          <p>If you have any questions or need further assistance, please don't hesitate to contact us.</p>
+          <p>For any complaints, <a href="mailto:complaints@smashapartments.com" style="color: #ff8c00;">complaints@smashapartments.com</a></p>
+          <p>The smashapartments.com Team</p>
+      </main>
+      
+      <footer style="background-color: #f4f4f4; padding: 20px; text-align: center; font-size: 12px;">
+          <p>This email is from smashapartments.com regarding your confirmed booking.</p>
+          <p>For support, please contact us at: <a href="mailto:support@smashapartments.com" style="color: #ff8c00;">support@smashapartments.com</a></p>
+          <p>&copy; 2024 smashapartments.com. All rights reserved.</p>
+          <p><a href="#" style="color: #ff8c00;">Privacy Policy</a> | <a href="#" style="color: #ff8c00;">Terms of Service</a></p>
+      </footer>
+  </body>
+  </html>
+  `;
+
+  const mailOptions = {
+    from: sender,
+    to: [email],
+    subject: subject,
+    html: htmlTemplate,
+    category: "Booking Confirmation",
+    
+  };
+
+  try {
+    const result = await transport.sendMail(mailOptions);
+    console.log("Confirmatory email sent successfully:", result);
+  } catch (error) {
+    console.error("Error sending confirmatory email:", error);
+    throw error;
+  }
+};
+
 const getAllBookings = async (req, res) => {
   try {
     const { userId } = req.params;
 
     // Fetch all listings owned by the user
-    const stayListings = await StayListing.find({ owner: userId })
-      .select("_id")
-      .lean();
-    const officeSpaces = await OfficeSpace.find({ owner: userId })
-      .select("_id")
-      .lean();
-    const carRentals = await CarRental.find({ owner: userId })
-      .select("_id")
-      .lean();
-    const services = await Service.find({ owner: userId }).select("_id").lean();
+    const stayListings = await StayListing.find({ owner: userId }).lean();
+    const officeSpaces = await OfficeSpace.find({ owner: userId }).lean();
+    const carRentals = await CarRental.find({ owner: userId }).lean();
+    const services = await Service.find({ owner: userId }).lean();
+
+    // Create maps of listings by their IDs
+    const stayListingMap = stayListings.reduce((acc, listing) => {
+      acc[listing._id] = listing;
+      return acc;
+    }, {});
+    const officeSpaceMap = officeSpaces.reduce((acc, listing) => {
+      acc[listing._id] = listing;
+      return acc;
+    }, {});
+    const carRentalMap = carRentals.reduce((acc, listing) => {
+      acc[listing._id] = listing;
+      return acc;
+    }, {});
+    const serviceMap = services.reduce((acc, listing) => {
+      acc[listing._id] = listing;
+      return acc;
+    }, {});
 
     // Extract listing IDs for each type
     const stayListingIds = stayListings.map((listing) => listing._id);
@@ -1576,37 +2187,157 @@ const getAllBookings = async (req, res) => {
       return acc;
     }, {});
 
-    // Combine all bookings into one array with their type and user info
+    // Combine all bookings into one array with their type, user info, and listing info
     const allBookings = [
       ...stayBookings.map((booking) => ({
         ...booking,
         type: "stay",
         user: userMap[booking.userId],
+        listing: stayListingMap[booking.listingId],
       })),
       ...officeBookings.map((booking) => ({
         ...booking,
         type: "office",
         user: userMap[booking.userId],
+        listing: officeSpaceMap[booking.officeId],
       })),
       ...rentalBookings.map((booking) => ({
         ...booking,
         type: "rental",
         user: userMap[booking.userId],
+        listing: carRentalMap[booking.rentalId],
       })),
       ...serviceBookings.map((booking) => ({
         ...booking,
         type: "service",
         user: userMap[booking.userId],
+        listing: serviceMap[booking.serviceId],
       })),
     ];
 
-    // Respond with all bookings
+    // Respond with all bookings, each with detailed listing information
     res.status(200).json(allBookings);
   } catch (error) {
     console.error("Error fetching bookings:", error);
     res.status(500).json({ error: "Failed to fetch bookings" });
   }
 };
+
+// const getAllBookingsGeneral = async (req, res) => {
+//   try {
+//     const { userId } = req.params;
+
+//     // Fetch all listings with their owners
+//     const stayListings = await StayListing.find().lean();
+//     const officeSpaces = await OfficeSpace.find().lean();
+//     const carRentals = await CarRental.find().lean();
+//     const services = await Service.find().lean();
+
+//     // Create maps of listings by their IDs
+//     const stayListingMap = stayListings.reduce((acc, listing) => {
+//       acc[listing._id] = listing;
+//       return acc;
+//     }, {});
+//     const officeSpaceMap = officeSpaces.reduce((acc, listing) => {
+//       acc[listing._id] = listing;
+//       return acc;
+//     }, {});
+//     const carRentalMap = carRentals.reduce((acc, listing) => {
+//       acc[listing._id] = listing;
+//       return acc;
+//     }, {});
+//     const serviceMap = services.reduce((acc, listing) => {
+//       acc[listing._id] = listing;
+//       return acc;
+//     }, {});
+
+//     // Collect all owner IDs
+//     const ownerIds = [
+//       ...stayListings.map((listing) => listing.owner),
+//       ...officeSpaces.map((listing) => listing.owner),
+//       ...carRentals.map((listing) => listing.owner),
+//       ...services.map((listing) => listing.owner),
+//     ];
+//     const uniqueOwnerIds = [...new Set(ownerIds)];
+
+//     // Fetch all bookings
+//     const stayBookings = await Booking.find({
+//       listingId: { $in: stayListings.map((listing) => listing._id) },
+//     }).lean();
+//     const officeBookings = await CoofficeBooking.find({
+//       officeId: { $in: officeSpaces.map((listing) => listing._id) },
+//     }).lean();
+//     const rentalBookings = await Rental.find({
+//       rentalId: { $in: carRentals.map((listing) => listing._id) },
+//     }).lean();
+//     const serviceBookings = await ServiceBooking.find({
+//       serviceId: { $in: services.map((listing) => listing._id) },
+//     }).lean();
+
+//     // Collect all user IDs from bookings
+//     const userIds = [
+//       ...stayBookings.map((booking) => booking.userId),
+//       ...officeBookings.map((booking) => booking.userId),
+//       ...rentalBookings.map((booking) => booking.userId),
+//       ...serviceBookings.map((booking) => booking.userId),
+//     ];
+//     const uniqueUserIds = [...new Set(userIds)];
+
+//     // Fetch users and payouts in parallel
+//     const [users, ownerPayouts] = await Promise.all([
+//       User.find({ _id: { $in: uniqueUserIds } }).lean(),
+//       Payout.find({ userId: { $in: uniqueOwnerIds } }).lean(),
+//     ]);
+
+//     // Create maps for users and payouts
+//     const userMap = users.reduce((acc, user) => {
+//       acc[user._id] = user;
+//       return acc;
+//     }, {});
+
+//     const payoutMap = ownerPayouts.reduce((acc, payout) => {
+//       acc[payout.userId] = payout;
+//       return acc;
+//     }, {});
+
+//     // Combine all bookings with user and owner payout information
+//     const allBookings = [
+//       ...stayBookings.map((booking) => ({
+//         ...booking,
+//         type: "stay",
+//         user: userMap[booking.userId],
+//         listing: stayListingMap[booking.listingId],
+//         ownerPayout: payoutMap[stayListingMap[booking.listingId].owner] || null,
+//       })),
+//       ...officeBookings.map((booking) => ({
+//         ...booking,
+//         type: "office",
+//         user: userMap[booking.userId],
+//         listing: officeSpaceMap[booking.officeId],
+//         ownerPayout: payoutMap[officeSpaceMap[booking.officeId].owner] || null,
+//       })),
+//       ...rentalBookings.map((booking) => ({
+//         ...booking,
+//         type: "rental",
+//         user: userMap[booking.userId],
+//         listing: carRentalMap[booking.rentalId],
+//         ownerPayout: payoutMap[carRentalMap[booking.rentalId].owner] || null,
+//       })),
+//       ...serviceBookings.map((booking) => ({
+//         ...booking,
+//         type: "service",
+//         user: userMap[booking.userId],
+//         listing: serviceMap[booking.serviceId],
+//         ownerPayout: payoutMap[serviceMap[booking.serviceId].owner] || null,
+//       })),
+//     ];
+
+//     res.status(200).json(allBookings);
+//   } catch (error) {
+//     console.error("Error fetching bookings:", error);
+//     res.status(500).json({ error: "Failed to fetch bookings" });
+//   }
+// };
 const getAllBookingsGeneral = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -1637,43 +2368,51 @@ const getAllBookingsGeneral = async (req, res) => {
 
     // Collect all owner IDs
     const ownerIds = [
-      ...stayListings.map(listing => listing.owner),
-      ...officeSpaces.map(listing => listing.owner),
-      ...carRentals.map(listing => listing.owner),
-      ...services.map(listing => listing.owner)
+      ...stayListings.map((listing) => listing.owner),
+      ...officeSpaces.map((listing) => listing.owner),
+      ...carRentals.map((listing) => listing.owner),
+      ...services.map((listing) => listing.owner),
     ];
     const uniqueOwnerIds = [...new Set(ownerIds)];
 
     // Fetch all bookings
     const stayBookings = await Booking.find({
-      listingId: { $in: stayListings.map(listing => listing._id) }
+      listingId: { $in: stayListings.map((listing) => listing._id) },
     }).lean();
     const officeBookings = await CoofficeBooking.find({
-      officeId: { $in: officeSpaces.map(listing => listing._id) }
+      officeId: { $in: officeSpaces.map((listing) => listing._id) },
     }).lean();
     const rentalBookings = await Rental.find({
-      rentalId: { $in: carRentals.map(listing => listing._id) }
+      rentalId: { $in: carRentals.map((listing) => listing._id) },
     }).lean();
     const serviceBookings = await ServiceBooking.find({
-      serviceId: { $in: services.map(listing => listing._id) }
+      serviceId: { $in: services.map((listing) => listing._id) },
     }).lean();
+
+    // Collect all booking IDs
+    const bookingIds = [
+      ...stayBookings.map((booking) => booking._id),
+      ...officeBookings.map((booking) => booking._id),
+      ...rentalBookings.map((booking) => booking._id),
+      ...serviceBookings.map((booking) => booking._id),
+    ];
 
     // Collect all user IDs from bookings
     const userIds = [
-      ...stayBookings.map(booking => booking.userId),
-      ...officeBookings.map(booking => booking.userId),
-      ...rentalBookings.map(booking => booking.userId),
-      ...serviceBookings.map(booking => booking.userId)
+      ...stayBookings.map((booking) => booking.userId),
+      ...officeBookings.map((booking) => booking.userId),
+      ...rentalBookings.map((booking) => booking.userId),
+      ...serviceBookings.map((booking) => booking.userId),
     ];
     const uniqueUserIds = [...new Set(userIds)];
 
-    // Fetch users and payouts in parallel
-    const [users, ownerPayouts] = await Promise.all([
+    // Fetch users, owner payouts, and vendor payouts in parallel
+    const [users, ownerPayouts, vendorPayouts] = await Promise.all([
       User.find({ _id: { $in: uniqueUserIds } }).lean(),
-      Payout.find({ userId: { $in: uniqueOwnerIds } }).lean()
+      Payout.find({ userId: { $in: uniqueOwnerIds } }).lean(),
+      VendorPayouts.find({ booking: { $in: bookingIds } }).lean(),
     ]);
-
-    // Create maps for users and payouts
+    // Create maps for users, payouts, and vendor payouts
     const userMap = users.reduce((acc, user) => {
       acc[user._id] = user;
       return acc;
@@ -1684,36 +2423,46 @@ const getAllBookingsGeneral = async (req, res) => {
       return acc;
     }, {});
 
-    // Combine all bookings with user and owner payout information
+    // Create map for vendor payouts by booking ID
+    const vendorPayoutMap = vendorPayouts.reduce((acc, payout) => {
+      acc[payout.booking] = payout;
+      return acc;
+    }, {});
+
+    // Combine all bookings with user, owner payout, and vendor payout information
     const allBookings = [
       ...stayBookings.map((booking) => ({
         ...booking,
         type: "stay",
         user: userMap[booking.userId],
         listing: stayListingMap[booking.listingId],
-        ownerPayout: payoutMap[stayListingMap[booking.listingId].owner] || null
+        ownerPayout: payoutMap[stayListingMap[booking.listingId].owner] || null,
+        vendorPayout: vendorPayoutMap[booking._id] || null, // Added vendor payout
       })),
       ...officeBookings.map((booking) => ({
         ...booking,
         type: "office",
         user: userMap[booking.userId],
         listing: officeSpaceMap[booking.officeId],
-        ownerPayout: payoutMap[officeSpaceMap[booking.officeId].owner] || null
+        ownerPayout: payoutMap[officeSpaceMap[booking.officeId].owner] || null,
+        vendorPayout: vendorPayoutMap[booking._id] || null, // Added vendor payout
       })),
       ...rentalBookings.map((booking) => ({
         ...booking,
         type: "rental",
         user: userMap[booking.userId],
         listing: carRentalMap[booking.rentalId],
-        ownerPayout: payoutMap[carRentalMap[booking.rentalId].owner] || null
+        ownerPayout: payoutMap[carRentalMap[booking.rentalId].owner] || null,
+        vendorPayout: vendorPayoutMap[booking._id] || null, // Added vendor payout
       })),
       ...serviceBookings.map((booking) => ({
         ...booking,
         type: "service",
         user: userMap[booking.userId],
         listing: serviceMap[booking.serviceId],
-        ownerPayout: payoutMap[serviceMap[booking.serviceId].owner] || null
-      }))
+        ownerPayout: payoutMap[serviceMap[booking.serviceId].owner] || null,
+        vendorPayout: vendorPayoutMap[booking._id] || null, // Added vendor payout
+      })),
     ];
 
     res.status(200).json(allBookings);
@@ -1727,7 +2476,6 @@ const getUpcomingBookings = async (req, res) => {
     const { userId } = req.params;
     const today = new Date();
 
-    // Fetch all listings owned by the user
     const [stayListings, rentals, services, coofficeSpaces] = await Promise.all(
       [
         StayListing.find({ owner: userId }).lean(),
@@ -1737,13 +2485,11 @@ const getUpcomingBookings = async (req, res) => {
       ]
     );
 
-    // Extract listing IDs
     const stayListingIds = stayListings.map((listing) => listing._id);
     const rentalIds = rentals.map((rental) => rental._id);
     const serviceIds = services.map((service) => service._id);
     const coofficeSpaceIds = coofficeSpaces.map((space) => space._id);
 
-    // Fetch confirmed bookings from all schemas
     const [stayBookings, rentalBookings, serviceBookings, coofficeBookings] =
       await Promise.all([
         Booking.find({
@@ -1764,7 +2510,6 @@ const getUpcomingBookings = async (req, res) => {
         }).lean(),
       ]);
 
-    // Combine all upcoming bookings
     const upcomingBookings = [
       ...stayBookings,
       ...rentalBookings,
@@ -2129,6 +2874,542 @@ const getInactiveListings = async (req, res) => {
     res.status(500).json({ error: "Failed to fetch inactive listings" });
   }
 };
+const sendNewBookingEmail = async (email, bookingDetails) => {
+  const listing = await StayListing.findById(bookingDetails.listingId).lean();
+  const propertyName = listing.property_name;
+
+  const htmlTemplate = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your smashapartments.com Booking Confirmation</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body style="font-family: 'Montserrat', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <header style="background-color: #ffffff; padding: 20px; text-align: center; border-bottom: 2px solid #221f60;">
+        <svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="100px" height="100px" viewBox="0 0 1000 1000" style="shape-rendering:geometricPrecision; text-rendering:geometricPrecision; image-rendering:optimizeQuality; fill-rule:evenodd; clip-rule:evenodd">
+            <!-- SVG path data here -->
+        </svg>
+    </header>
+    
+    <main style="padding: 20px;">
+        <h1 style="color: #221f60; font-family: 'Montserrat', Arial, sans-serif; font-weight: 700;">New Booking Awaiting Confirmation</h1>
+        <p>Hello,</p>
+        <p>Thank you for choosing smashapartments.com! Your booking request for <strong>${propertyName}</strong> has been received and is currently awaiting confirmation.</p>
+        
+        <div style="background-color: #f8f8f8; padding: 20px; border-radius: 5px; margin: 20px 0;">
+            <h2 style="color: #ff8c00; margin-top: 0;">Booking Details</h2>
+            <p><strong>Check-in:</strong> ${bookingDetails.checkIn}</p>
+            <p><strong>Check-out:</strong> ${bookingDetails.checkOut}</p>
+            <p><strong>Guests:</strong> ${bookingDetails.guests}</p>
+            <p><strong>Total Amount:</strong> ${bookingDetails.totalAmount}</p>
+        </div>
+
+        <p>What happens next?</p>
+        <ul style="padding-left: 20px;">
+            <li>The property owner will review your booking request</li>
+            <li>You will receive a confirmation email within 24 hours</li>
+            <li>No payment will be processed until your booking is confirmed</li>
+        </ul>
+
+        <p>If you have any questions about your booking, please don't hesitate to contact us.</p>
+        <p>The smashapartments.com Team</p>
+    </main>
+    
+    <footer style="background-color: #f4f4f4; padding: 20px; text-align: center; font-size: 12px;">
+        <p>This email is from smashapartments.com regarding your recent booking request.</p>
+        <p>For support, please contact us at: <a href="mailto:support@smashapartments.com" style="color: #ff8c00;">support@smashapartments.com</a></p>
+        <p>&copy; 2024 smashapartments.com. All rights reserved.</p>
+        <p><a href="#" style="color: #ff8c00;">Privacy Policy</a> | <a href="#" style="color: #ff8c00;">Terms of Service</a></p>
+    </footer>
+</body>
+</html>
+  `;
+
+  const mailOptions = {
+    from: sender,
+    to: [email],
+    subject: "Your smashapartments.com Booking Request",
+    text: `Thank you for your booking request at ${propertyName}. Your booking is awaiting confirmation. Check-in: ${bookingDetails.checkIn}, Check-out: ${bookingDetails.checkOut}, Guests: ${bookingDetails.guests}, Total: ${bookingDetails.totalAmount}`,
+    html: htmlTemplate,
+    category: "Booking Confirmation",
+    
+  };
+
+  try {
+    const result = await transport.sendMail(mailOptions);
+    console.log("Booking confirmation email sent successfully:", result);
+  } catch (error) {
+    console.error("Error sending booking confirmation email:", error);
+    throw error;
+  }
+};
+const sendNewBookingEmailOffice = async (email, bookingDetails) => {
+  const listing = await OfficeSpace.findById(bookingDetails.officeId).lean();
+  const propertyName = listing.office_space_name;
+  const officeType = listing.office_type;
+
+  const htmlTemplate = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your smashapartments.com Booking Confirmation</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body style="font-family: 'Montserrat', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <header style="background-color: #ffffff; padding: 20px; text-align: center; border-bottom: 2px solid #221f60;">
+        <svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="100px" height="100px" viewBox="0 0 1000 1000" style="shape-rendering:geometricPrecision; text-rendering:geometricPrecision; image-rendering:optimizeQuality; fill-rule:evenodd; clip-rule:evenodd">
+            <!-- SVG path data here -->
+        </svg>
+    </header>
+    
+    <main style="padding: 20px;">
+        <h1 style="color: #221f60; font-family: 'Montserrat', Arial, sans-serif; font-weight: 700;">New Booking Awaiting Confirmation</h1>
+        <p>Hello,</p>
+        <p>Thank you for choosing smashapartments.com! Your booking request for <strong>${propertyName}</strong> has been received and is currently awaiting confirmation.</p>
+        
+        <div style="background-color: #f8f8f8; padding: 20px; border-radius: 5px; margin: 20px 0;">
+            <h2 style="color: #ff8c00; margin-top: 0;">Booking Details</h2>
+            <p><strong>Check-in:</strong> ${bookingDetails.checkIn}</p>
+            <p><strong>Check-out:</strong> ${bookingDetails.checkOut}</p>
+            <p><strong>Office type:</strong> ${officeType}</p>
+            <p><strong>Total Amount:</strong> ${bookingDetails.totalAmount}</p>
+        </div>
+
+        <p>What happens next?</p>
+        <ul style="padding-left: 20px;">
+            <li>The property owner will review your booking request</li>
+            <li>You will receive a confirmation email within 24 hours</li>
+            <li>No payment will be processed until your booking is confirmed</li>
+        </ul>
+
+        <p>If you have any questions about your booking, please don't hesitate to contact us.</p>
+        <p>The smashapartments.com Team</p>
+    </main>
+    
+    <footer style="background-color: #f4f4f4; padding: 20px; text-align: center; font-size: 12px;">
+        <p>This email is from smashapartments.com regarding your recent booking request.</p>
+        <p>For support, please contact us at: <a href="mailto:support@smashapartments.com" style="color: #ff8c00;">support@smashapartments.com</a></p>
+        <p>&copy; 2024 smashapartments.com. All rights reserved.</p>
+        <p><a href="#" style="color: #ff8c00;">Privacy Policy</a> | <a href="#" style="color: #ff8c00;">Terms of Service</a></p>
+    </footer>
+</body>
+</html>
+  `;
+
+  const mailOptions = {
+    from: sender,
+    to: [email],
+    subject: "Your smashapartments.com Booking Request",
+    text: `Thank you for your booking request at ${propertyName}. Your booking is awaiting confirmation. Check-in: ${bookingDetails.checkIn}, Check-out: ${bookingDetails.checkOut}, Guests: ${bookingDetails.guests}, Total: ${bookingDetails.totalAmount}`,
+    html: htmlTemplate,
+    category: "Booking Confirmation",
+    
+  };
+
+  try {
+    const result = await transport.sendMail(mailOptions);
+    console.log("Booking confirmation email sent successfully:", result);
+  } catch (error) {
+    console.error("Error sending booking confirmation email:", error);
+    throw error;
+  }
+};
+const sendNewBookingEmailPickup = async (email, bookingDetails) => {
+  const listing = await Service.findById(bookingDetails.serviceId).lean();
+  const propertyName = listing.serviceName;
+
+  const htmlTemplate = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your smashapartments.com Booking Confirmation</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body style="font-family: 'Montserrat', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <header style="background-color: #ffffff; padding: 20px; text-align: center; border-bottom: 2px solid #221f60;">
+        <svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="100px" height="100px" viewBox="0 0 1000 1000" style="shape-rendering:geometricPrecision; text-rendering:geometricPrecision; image-rendering:optimizeQuality; fill-rule:evenodd; clip-rule:evenodd">
+            <!-- SVG path data here -->
+        </svg>
+    </header>
+    
+    <main style="padding: 20px;">
+        <h1 style="color: #221f60; font-family: 'Montserrat', Arial, sans-serif; font-weight: 700;">New Booking Awaiting Confirmation</h1>
+        <p>Hello,</p>
+        <p>Thank you for choosing smashapartments.com! Your booking request for <strong>${propertyName}</strong> has been received and is currently awaiting confirmation.</p>
+        
+        <div style="background-color: #f8f8f8; padding: 20px; border-radius: 5px; margin: 20px 0;">
+            <h2 style="color: #ff8c00; margin-top: 0;">Booking Details</h2>
+            <p><strong>Arrival date:</strong> ${bookingDetails.arrivalDate}</p>
+            <p><strong>Arrival time:</strong> ${bookingDetails.arrivalTime}</p>
+            <p><strong>Total Amount:</strong> ${bookingDetails.totalAmount}</p>
+        </div>
+
+        <p>What happens next?</p>
+        <ul style="padding-left: 20px;">
+            <li>The property owner will review your booking request</li>
+            <li>You will receive a confirmation email within 24 hours</li>
+            <li>No payment will be processed until your booking is confirmed</li>
+        </ul>
+
+        <p>If you have any questions about your booking, please don't hesitate to contact us.</p>
+        <p>The smashapartments.com Team</p>
+    </main>
+    
+    <footer style="background-color: #f4f4f4; padding: 20px; text-align: center; font-size: 12px;">
+        <p>This email is from smashapartments.com regarding your recent booking request.</p>
+        <p>For support, please contact us at: <a href="mailto:support@smashapartments.com" style="color: #ff8c00;">support@smashapartments.com</a></p>
+        <p>&copy; 2024 smashapartments.com. All rights reserved.</p>
+        <p><a href="#" style="color: #ff8c00;">Privacy Policy</a> | <a href="#" style="color: #ff8c00;">Terms of Service</a></p>
+    </footer>
+</body>
+</html>
+  `;
+
+  const mailOptions = {
+    from: sender,
+    to: [email],
+    subject: "Your smashapartments.com Booking Request",
+    text: `Thank you for your booking request at ${propertyName}. Your booking is awaiting confirmation. Check-in: ${bookingDetails.checkIn}, Check-out: ${bookingDetails.checkOut}, Guests: ${bookingDetails.guests}, Total: ${bookingDetails.totalAmount}`,
+    html: htmlTemplate,
+    category: "Booking Confirmation",
+    
+  };
+
+  try {
+    const result = await transport.sendMail(mailOptions);
+    console.log("Booking confirmation email sent successfully:", result);
+  } catch (error) {
+    console.error("Error sending booking confirmation email:", error);
+    throw error;
+  }
+};
+const sendNewBookingEmailRental = async (email, bookingDetails) => {
+  const listing = await CarRental.findById(bookingDetails.rentalId).lean();
+
+  const htmlTemplate = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your smashapartments.com Booking Confirmation</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body style="font-family: 'Montserrat', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <header style="background-color: #ffffff; padding: 20px; text-align: center; border-bottom: 2px solid #221f60;">
+        <svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="100px" height="100px" viewBox="0 0 1000 1000" style="shape-rendering:geometricPrecision; text-rendering:geometricPrecision; image-rendering:optimizeQuality; fill-rule:evenodd; clip-rule:evenodd">
+            <!-- SVG path data here -->
+        </svg>
+    </header>
+    
+    <main style="padding: 20px;">
+        <h1 style="color: #221f60; font-family: 'Montserrat', Arial, sans-serif; font-weight: 700;">New Rental Awaiting Confirmation</h1>
+        <p>Hello,</p>
+        <p>Thank you for choosing smashapartments.com! Your rental request has been received and is currently awaiting confirmation.</p>
+        
+        <div style="background-color: #f8f8f8; padding: 20px; border-radius: 5px; margin: 20px 0;">
+            <h2 style="color: #ff8c00; margin-top: 0;">Booking Details</h2>
+            <p><strong>Pickup location:</strong> ${bookingDetails.pickupLocation}</p>
+            <p><strong>Pickup date:</strong> ${bookingDetails.pickupDate}</p>
+            <p><strong>Pickup time:</strong> ${bookingDetails.pickupTime}</p>
+            <p><strong>Drop off location:</strong> ${bookingDetails.dropoffLocation}</p>
+            <p><strong>Total Amount:</strong> ${bookingDetails.totalAmount}</p>
+        </div>
+
+        <p>What happens next?</p>
+        <ul style="padding-left: 20px;">
+            <li>The property owner will review your booking request</li>
+            <li>You will receive a confirmation email within 24 hours</li>
+            <li>No payment will be processed until your booking is confirmed</li>
+        </ul>
+
+        <p>If you have any questions about your booking, please don't hesitate to contact us.</p>
+        <p>The smashapartments.com Team</p>
+    </main>
+    
+    <footer style="background-color: #f4f4f4; padding: 20px; text-align: center; font-size: 12px;">
+        <p>This email is from smashapartments.com regarding your recent booking request.</p>
+        <p>For support, please contact us at: <a href="mailto:support@smashapartments.com" style="color: #ff8c00;">support@smashapartments.com</a></p>
+        <p>&copy; 2024 smashapartments.com. All rights reserved.</p>
+        <p><a href="#" style="color: #ff8c00;">Privacy Policy</a> | <a href="#" style="color: #ff8c00;">Terms of Service</a></p>
+    </footer>
+</body>
+</html>
+  `;
+
+  const mailOptions = {
+    from: sender,
+    to: [email],
+    subject: "Your smashapartments.com Rental Request",
+    text: `Thank you for your rental request. Your booking is awaiting confirmation.`,
+    html: htmlTemplate,
+    category: "Booking Confirmation",
+    
+  };
+
+  try {
+    const result = await transport.sendMail(mailOptions);
+    console.log("Booking confirmation email sent successfully:", result);
+  } catch (error) {
+    console.error("Error sending booking confirmation email:", error);
+    throw error;
+  }
+};
+const sendNewBookingNotificationToOwner = async (listingId) => {
+  // Fetch the stay listing details
+  const listing = await StayListing.findById(listingId).lean();
+  const propertyName = listing.property_name;
+
+  // Fetch the property owner's email
+  const owner = await User.findById(listing.owner).lean();
+  const ownerEmail = owner.email;
+  const ownerName = owner.first_name;
+
+  const htmlTemplate = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Booking for Your Property on smashapartments.com</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body style="font-family: 'Montserrat', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <header style="background-color: #ffffff; padding: 20px; text-align: center; border-bottom: 2px solid #221f60;">
+        <svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="100px" height="100px" viewBox="0 0 1000 1000" style="shape-rendering:geometricPrecision; text-rendering:geometricPrecision; image-rendering:optimizeQuality; fill-rule:evenodd; clip-rule:evenodd">
+            <!-- SVG path data here -->
+        </svg>
+    </header>
+    
+    <main style="padding: 20px;">
+        <h1 style="color: #221f60; font-family: 'Montserrat', Arial, sans-serif; font-weight: 700;">New Booking for Your Property</h1>
+        <p>Hello, ${ownerName}</p>
+        <p>You have received a new booking request for your property <strong>${propertyName}</strong> on smashapartments.com. Please log in to your account to review and confirm this booking as soon as possible.</p>
+
+        <p>If you have any questions or concerns, please don't hesitate to contact us.</p>
+        <p>The smashapartments.com Team</p>
+    </main>
+    
+    <footer style="background-color: #f4f4f4; padding: 20px; text-align: center; font-size: 12px;">
+        <p>This email is from smashapartments.com regarding a new booking for your property.</p>
+        <p>For support, please contact us at: <a href="mailto:support@smashapartments.com" style="color: #ff8c00;">support@smashapartments.com</a></p>
+        <p>&copy; 2024 smashapartments.com. All rights reserved.</p>
+        <p><a href="#" style="color: #ff8c00;">Privacy Policy</a> | <a href="#" style="color: #ff8c00;">Terms of Service</a></p>
+    </footer>
+</body>
+</html>
+  `;
+
+  const mailOptions = {
+    from: sender,
+    to: [ownerEmail],
+    subject: "New Booking for Your Property on smashapartments.com",
+    text: `You have received a new booking request for your property "${propertyName}". Please log in to your account to review and confirm this booking.`,
+    html: htmlTemplate,
+    category: "New Booking Notification",
+    
+  };
+
+  try {
+    const result = await transport.sendMail(mailOptions);
+    console.log("New booking notification email sent successfully:", result);
+  } catch (error) {
+    console.error("Error sending new booking notification email:", error);
+    throw error;
+  }
+};
+const sendNewBookingNotificationToOwnerOffice = async (officeId) => {
+  // Fetch the stay listing details
+  const listing = await OfficeSpace.findById(officeId).lean();
+  const propertyName = listing.office_space_name;
+
+  // Fetch the property owner's email
+  const owner = await User.findById(listing.owner).lean();
+  const ownerEmail = owner.email;
+  const ownerName = owner.first_name;
+
+  const htmlTemplate = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Booking for Your Property on smashapartments.com</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body style="font-family: 'Montserrat', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <header style="background-color: #ffffff; padding: 20px; text-align: center; border-bottom: 2px solid #221f60;">
+        <svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="100px" height="100px" viewBox="0 0 1000 1000" style="shape-rendering:geometricPrecision; text-rendering:geometricPrecision; image-rendering:optimizeQuality; fill-rule:evenodd; clip-rule:evenodd">
+            <!-- SVG path data here -->
+        </svg>
+    </header>
+    
+    <main style="padding: 20px;">
+        <h1 style="color: #221f60; font-family: 'Montserrat', Arial, sans-serif; font-weight: 700;">New Booking for Your Property</h1>
+        <p>Hello, ${ownerName}</p>
+        <p>You have received a new booking request for your property <strong>${propertyName}</strong> on smashapartments.com. Please log in to your account to review and confirm this booking as soon as possible.</p>
+
+        <p>If you have any questions or concerns, please don't hesitate to contact us.</p>
+        <p>The smashapartments.com Team</p>
+    </main>
+    
+    <footer style="background-color: #f4f4f4; padding: 20px; text-align: center; font-size: 12px;">
+        <p>This email is from smashapartments.com regarding a new booking for your property.</p>
+        <p>For support, please contact us at: <a href="mailto:support@smashapartments.com" style="color: #ff8c00;">support@smashapartments.com</a></p>
+        <p>&copy; 2024 smashapartments.com. All rights reserved.</p>
+        <p><a href="#" style="color: #ff8c00;">Privacy Policy</a> | <a href="#" style="color: #ff8c00;">Terms of Service</a></p>
+    </footer>
+</body>
+</html>
+  `;
+
+  const mailOptions = {
+    from: sender,
+    to: [ownerEmail],
+    subject: "New Booking for Your Property on smashapartments.com",
+    text: `You have received a new booking request for your property "${propertyName}". Please log in to your account to review and confirm this booking.`,
+    html: htmlTemplate,
+    category: "New Booking Notification",
+    
+  };
+
+  try {
+    const result = await transport.sendMail(mailOptions);
+    console.log("New booking notification email sent successfully:", result);
+  } catch (error) {
+    console.error("Error sending new booking notification email:", error);
+    throw error;
+  }
+};
+const sendNewBookingNotificationToOwnerPickup = async (serviceId) => {
+  // Fetch the stay listing details
+  const listing = await Service.findById(serviceId).lean();
+
+  // Fetch the property owner's email
+  const owner = await User.findById(listing.owner).lean();
+  const ownerEmail = owner.email;
+  const ownerName = owner.first_name;
+
+  const htmlTemplate = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Booking for Your Property on smashapartments.com</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body style="font-family: 'Montserrat', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <header style="background-color: #ffffff; padding: 20px; text-align: center; border-bottom: 2px solid #221f60;">
+        <svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="100px" height="100px" viewBox="0 0 1000 1000" style="shape-rendering:geometricPrecision; text-rendering:geometricPrecision; image-rendering:optimizeQuality; fill-rule:evenodd; clip-rule:evenodd">
+            <!-- SVG path data here -->
+        </svg>
+    </header>
+    
+    <main style="padding: 20px;">
+        <h1 style="color: #221f60; font-family: 'Montserrat', Arial, sans-serif; font-weight: 700;">New Booking for Your Property</h1>
+        <p>Hello, ${ownerName}</p>
+        <p>You have received a new booking request for a pickup on smashapartments.com. Please log in to your account to review and confirm this booking as soon as possible.</p>
+
+        <p>If you have any questions or concerns, please don't hesitate to contact us.</p>
+        <p>The smashapartments.com Team</p>
+    </main>
+    
+    <footer style="background-color: #f4f4f4; padding: 20px; text-align: center; font-size: 12px;">
+        <p>This email is from smashapartments.com regarding a new booking for your property.</p>
+        <p>For support, please contact us at: <a href="mailto:support@smashapartments.com" style="color: #ff8c00;">support@smashapartments.com</a></p>
+        <p>&copy; 2024 smashapartments.com. All rights reserved.</p>
+        <p><a href="#" style="color: #ff8c00;">Privacy Policy</a> | <a href="#" style="color: #ff8c00;">Terms of Service</a></p>
+    </footer>
+</body>
+</html>
+  `;
+
+  const mailOptions = {
+    from: sender,
+    to: [ownerEmail],
+    subject: "New Booking for Your Service on smashapartments.com",
+    text: `You have received a new booking request for your service. Please log in to your account to review and confirm this booking.`,
+    html: htmlTemplate,
+    category: "New Booking Notification",
+    
+  };
+
+  try {
+    const result = await transport.sendMail(mailOptions);
+    console.log("New booking notification email sent successfully:", result);
+  } catch (error) {
+    console.error("Error sending new booking notification email:", error);
+    throw error;
+  }
+};
+const sendNewBookingNotificationToOwnerRental = async (rentalId) => {
+  const listing = await CarRental.findById(rentalId).lean();
+
+  const owner = await User.findById(listing.owner).lean();
+  const ownerEmail = owner.email;
+  const ownerName = owner.first_name;
+
+  const htmlTemplate = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Booking for Your Property on smashapartments.com</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body style="font-family: 'Montserrat', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <header style="background-color: #ffffff; padding: 20px; text-align: center; border-bottom: 2px solid #221f60;">
+        <svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="100px" height="100px" viewBox="0 0 1000 1000" style="shape-rendering:geometricPrecision; text-rendering:geometricPrecision; image-rendering:optimizeQuality; fill-rule:evenodd; clip-rule:evenodd">
+            <!-- SVG path data here -->
+        </svg>
+    </header>
+    
+    <main style="padding: 20px;">
+        <h1 style="color: #221f60; font-family: 'Montserrat', Arial, sans-serif; font-weight: 700;">New Booking for Your Rental</h1>
+        <p>Hello, ${ownerName}</p>
+        <p>You have received a new booking request for a rental on smashapartments.com. Please log in to your account to review and confirm this booking as soon as possible.</p>
+
+        <p>If you have any questions or concerns, please don't hesitate to contact us.</p>
+        <p>The smashapartments.com Team</p>
+    </main>
+    
+    <footer style="background-color: #f4f4f4; padding: 20px; text-align: center; font-size: 12px;">
+        <p>This email is from smashapartments.com regarding a new booking for your property.</p>
+        <p>For support, please contact us at: <a href="mailto:support@smashapartments.com" style="color: #ff8c00;">support@smashapartments.com</a></p>
+        <p>&copy; 2024 smashapartments.com. All rights reserved.</p>
+        <p><a href="#" style="color: #ff8c00;">Privacy Policy</a> | <a href="#" style="color: #ff8c00;">Terms of Service</a></p>
+    </footer>
+</body>
+</html>
+  `;
+
+  const mailOptions = {
+    from: sender,
+    to: [ownerEmail],
+    subject: "New Booking for Your Rental on smashapartments.com",
+    text: `You have received a new booking request for a rental. Please log in to your account to review and confirm this booking.`,
+    html: htmlTemplate,
+    category: "New Booking Notification",
+    
+  };
+
+  try {
+    const result = await transport.sendMail(mailOptions);
+    console.log("New booking notification email sent successfully:", result);
+  } catch (error) {
+    console.error("Error sending new booking notification email:", error);
+    throw error;
+  }
+};
 const verifyPaymentAndBook = async (req, res) => {
   try {
     const { token } = req.cookies;
@@ -2139,7 +3420,7 @@ const verifyPaymentAndBook = async (req, res) => {
       checkOutDate,
       numPeople,
       numRooms,
-      totalPrice,
+      final,
     } = req.body;
 
     if (!token) {
@@ -2186,13 +3467,21 @@ const verifyPaymentAndBook = async (req, res) => {
       checkOutDate,
       numPeople,
       numRooms,
-      totalPrice,
+      totalPrice: final,
       paymentReference: reference,
-      status: "confirmed",
+      status: "pending",
     });
 
     await newBooking.save();
 
+    await sendNewBookingEmail(decoded.email, {
+      listingId,
+      checkIn: checkInDate,
+      checkOut: checkOutDate,
+      guests: numPeople,
+      totalAmount: final,
+    });
+    await sendNewBookingNotificationToOwner(listingId);
     res
       .status(201)
       .json({ message: "Payment verified and booking created successfully" });
@@ -2282,11 +3571,21 @@ const verifyPaymentAndBookRental = async (req, res) => {
       dropoffLocation,
       totalPrice,
       paymentReference: reference,
-      status: "confirmed",
+      status: "pending",
     });
 
     await newRentalBooking.save();
 
+    await sendNewBookingEmailRental(decoded.email, {
+      rentalId: carRental._id,
+      withDriver,
+      pickupLocation,
+      pickupDate: pickupDateTime,
+      pickupTime,
+      dropoffLocation,
+      totalAmount: totalPrice,
+    });
+    await sendNewBookingNotificationToOwnerRental(rentalId);
     res.status(201).json({
       message: "Payment verified and rental booking created successfully",
     });
@@ -2306,8 +3605,7 @@ const verifyPaymentAndBookRental = async (req, res) => {
 const verifyPaymentAndBookCooffice = async (req, res) => {
   try {
     const { token } = req.cookies;
-    const { reference, officeId, checkInDate, checkOutDate, totalPrice } =
-      req.body;
+    const { reference, officeId, checkInDate, checkOutDate, final } = req.body;
 
     if (!token) {
       return res.status(401).json({ error: "No token provided" });
@@ -2352,13 +3650,19 @@ const verifyPaymentAndBookCooffice = async (req, res) => {
       officeId,
       checkInDate,
       checkOutDate,
-      totalPrice,
+      totalPrice: final,
       paymentReference: reference,
-      status: "confirmed",
+      status: "pending",
     });
 
     await newCoofficeBooking.save();
-
+    await sendNewBookingEmailOffice(decoded.email, {
+      officeId,
+      checkIn: checkInDate,
+      checkOut: checkOutDate,
+      totalAmount: final,
+    });
+    await sendNewBookingNotificationToOwnerOffice(officeId);
     res.status(201).json({
       message: "Payment verified and cooffice booking created successfully",
     });
@@ -2478,28 +3782,156 @@ const getListingData = async (req, res) => {
   try {
     const { id } = req.params;
 
-
     const listing = await StayListing.findById(id).lean();
-
     if (!listing) {
       return res.status(404).json({ error: "Listing not found" });
     }
 
     const images = await MediaTag.find({ listing_id: id }).lean();
+    const reviewData = await Reviews.aggregate([
+      { $match: { listingId: listing._id } },
+      {
+        $group: {
+          _id: "$listingId",
+          averageRating: { $avg: { $toDouble: "$rating" } },
+          reviewCount: { $sum: 1 },
+        },
+      },
+    ]);
 
+    const averageRating =
+      reviewData.length > 0
+        ? Number(reviewData[0].averageRating.toFixed(1))
+        : null;
+    const reviewCount = reviewData.length > 0 ? reviewData[0].reviewCount : 0;
 
     const listingWithImages = {
       ...listing,
       images: images.map((image) => ({
         ...image,
-        url: `${image.media_location}`, // Construct image URL
+        url: `${image.media_location}`,
       })),
+      reviewCount,
+      averageRating,
     };
 
     res.status(200).json(listingWithImages);
   } catch (error) {
     console.error("Error fetching listing data:", error);
     res.status(500).json({ error: "Failed to fetch listing data" });
+  }
+};
+const approveListing = async (req, res) => {
+  const { listingId, type } = req.body;
+
+  try {
+    let listing;
+
+    switch (type) {
+      case "stay":
+        listing = await StayListing.findById(listingId);
+        break;
+      case "rental":
+        listing = await CarRental.findById(listingId);
+        break;
+      case "office":
+        listing = await OfficeSpace.findById(listingId);
+        break;
+      case "service":
+        listing = await Service.findById(listingId);
+        break;
+      default:
+        return res.status(400).json({ error: "Invalid listing type" });
+    }
+
+    if (!listing) return res.status(404).json({ error: "Listing not found" });
+
+    listing.approved = true;
+    await listing.save();
+
+    // Get the owner's email
+    const owner = await User.findById(listing.owner);
+    const ownerEmail = owner.email;
+
+    // Send the approved email to the owner
+    await sendApprovedEmail(ownerEmail, listing, type);
+
+    res.status(200).json({ message: "Listing approved successfully", listing });
+  } catch (error) {
+    console.error(error);
+    res
+      .status(500)
+      .json({ error: "An error occurred while approving the listing" });
+  }
+};
+
+const sendApprovedEmail = async (email, listing, type) => {
+  let propertyName;
+  switch (type) {
+    case "stay":
+      propertyName = listing.property_name;
+      break;
+    case "rental":
+      propertyName = listing.carNameModel;
+      break;
+    case "office":
+      propertyName = listing.office_space_name;
+      break;
+    case "service":
+      propertyName = listing.serviceName;
+      break;
+  }
+
+  const htmlTemplate = `
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Your Listing on smashapartments.com has been Approved</title>
+      <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+  </head>
+  <body style="font-family: 'Montserrat', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <header style="background-color: #ffffff; padding: 20px; text-align: center; border-bottom: 2px solid #221f60;">
+          <svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="100px" height="100px" viewBox="0 0 1000 1000" style="shape-rendering:geometricPrecision; text-rendering:geometricPrecision; image-rendering:optimizeQuality; fill-rule:evenodd; clip-rule:evenodd">
+              <!-- SVG path data here -->
+          </svg>
+      </header>
+      
+      <main style="padding: 20px;">
+          <h1 style="color: #221f60; font-family: 'Montserrat', Arial, sans-serif; font-weight: 700;">Your Listing on smashapartments.com has been Approved</h1>
+          <p>Hello,</p>
+          <p>We're pleased to inform you that your listing for "${propertyName}" has been approved by the smashapartments.com team.</p>
+          
+          <p>Your listing is now live and available for customers to book. If you have any questions or need further assistance, please don't hesitate to contact us.</p>
+          <p>The smashapartments.com Team</p>
+      </main>
+      
+      <footer style="background-color: #f4f4f4; padding: 20px; text-align: center; font-size: 12px;">
+          <p>This email is from smashapartments.com regarding the approval of your listing.</p>
+          <p>For support, please contact us at: <a href="mailto:support@smashapartments.com" style="color: #ff8c00;">support@smashapartments.com</a></p>
+          <p>&copy; 2024 smashapartments.com. All rights reserved.</p>
+          <p><a href="#" style="color: #ff8c00;">Privacy Policy</a> | <a href="#" style="color: #ff8c00;">Terms of Service</a></p>
+      </footer>
+  </body>
+  </html>
+  `;
+
+  const mailOptions = {
+    from: sender,
+    to: [email],
+    subject: "Your Listing on smashapartments.com has been Approved",
+    html: htmlTemplate,
+    category: "Listing Approval",
+    
+  };
+
+  try {
+    const result = await transport.sendMail(mailOptions);
+    console.log("Approved email sent successfully:", result);
+  } catch (error) {
+    console.error("Error sending approved email:", error);
+    throw error;
   }
 };
 
@@ -2525,24 +3957,21 @@ const getCooffices = async (req, res) => {
       minSize,
       limit,
       offset,
+      minRating, // New query parameter for filtering by minimum rating
     } = req.query;
 
     const filters = {};
 
-    // Add case-insensitive filter for location (city or state)
+    // Add filters for location, office type, amenities, rules, etc.
     if (location) {
       filters.$or = [
         { city: { $regex: new RegExp(location, "i") } },
         { state_name: { $regex: new RegExp(location, "i") } },
       ];
     }
-
-    // Add filter for office type
     if (officeType) {
       filters.office_type = { $regex: new RegExp(officeType, "i") };
     }
-
-    // Add filters for amenities and rules
     if (wifi) filters.wifi = wifi === "true";
     if (conferenceRoom) filters.conference_room = conferenceRoom === "true";
     if (parking) filters.parking = parking === "true";
@@ -2554,47 +3983,75 @@ const getCooffices = async (req, res) => {
     if (administrativeSupport)
       filters.administrative_support = administrativeSupport === "true";
 
-    // Add filters for price (using price_per_day)
+    // Price filters
     if (minPrice) filters.price_per_day = { $gte: Number(minPrice) };
     if (maxPrice) {
       filters.price_per_day = filters.price_per_day || {};
       filters.price_per_day.$lte = Number(maxPrice);
     }
 
-    // Add filters for availability
+    // Availability, desks, and size filters
     if (availableFrom)
       filters.available_from = { $lte: new Date(availableFrom) };
     if (availableTo) filters.available_to = { $gte: new Date(availableTo) };
-
-    // Add filter for minimum number of desks
     if (minDesks) filters.number_of_desks = { $gte: Number(minDesks) };
-
-    // Add filter for minimum office size
     if (minSize) filters.size_of_office = { $gte: Number(minSize) };
 
+    // Initial fetch of cooffice listings based on filters
     let cooffices = await OfficeSpace.find(filters)
       .skip(Number(offset) || 0)
       .limit(Number(limit) || 10)
       .lean();
 
     if (cooffices.length === 0) {
-      // If no cooffices are found, fetch without filters
       cooffices = await OfficeSpace.find()
         .skip(Number(offset) || 0)
         .limit(Number(limit) || 10)
         .lean();
     }
 
-    const coofficesWithImages = await Promise.all(
+    // Process each cooffice to add images and rating details
+    const coofficesWithDetails = await Promise.all(
       cooffices.map(async (cooffice) => {
-        const images = await MediaTag.find({
-          listing_id: cooffice._id,
-        }).lean();
-        return { ...cooffice, images };
+        const images = await MediaTag.find({ listing_id: cooffice._id }).lean();
+
+        // Aggregate review data for each cooffice
+        const reviewData = await Reviews.aggregate([
+          { $match: { listingId: cooffice._id } },
+          {
+            $group: {
+              _id: "$listing_id",
+              averageRating: { $avg: { $toDouble: "$rating" } },
+              reviewCount: { $sum: 1 },
+            },
+          },
+        ]);
+
+        const averageRating =
+          reviewData.length > 0
+            ? Number(reviewData[0].averageRating.toFixed(1))
+            : null;
+        const reviewCount =
+          reviewData.length > 0 ? reviewData[0].reviewCount : 0;
+
+        return {
+          ...cooffice,
+          images: images.map((image) => ({
+            ...image,
+            url: `${image.media_location}`,
+          })),
+          averageRating,
+          reviewCount,
+        };
       })
     );
 
-    res.status(200).json(coofficesWithImages);
+    // Filter listings to only include those with the exact rating specified by the user
+    const filteredCooffices = coofficesWithDetails.filter(
+      (cooffice) => !minRating || cooffice.averageRating === Number(minRating)
+    );
+
+    res.status(200).json(filteredCooffices);
   } catch (error) {
     console.error("Error fetching cooffices:", error);
     res.status(500).json({ error: "Failed to fetch cooffices" });
@@ -2628,60 +4085,85 @@ const getListings = async (req, res) => {
     }
 
     if (location) {
-      filters.city = { $regex: new RegExp(location, "i") }; // Case-insensitive search for location
+      filters.city = { $regex: new RegExp(location, "i") };
     }
 
-    // Add filter for date
+    // Date filter
     if (date) {
-      filters.available_from = { $lte: new Date(date) }; // Ensure the stay is available before or on the selected date
+      filters.available_from = { $lte: new Date(date) };
     }
 
-    // Add filter for people (maximum occupancy)
+    // People, rooms, and amenities filters
     if (people) {
-      filters.maximum_occupancy = { $gte: Number(people) }; // Ensure the stay can accommodate the specified number of people
+      filters.maximum_occupancy = { $gte: Number(people) };
     }
 
-    // Add filter for rooms
     if (rooms) {
-      filters.number_of_rooms = { $gte: Number(rooms) }; // Ensure the stay has at least the specified number of rooms
+      filters.number_of_rooms = { $gte: Number(rooms) };
     }
 
-    // Add additional filters for amenities
     if (pool) filters.pool = pool === "true";
     if (wifi) filters.wifi = wifi === "true";
     if (parking) filters.parking = parking === "true";
     if (gym) filters.gym = gym === "true";
 
-    // Add filters for price
+    // Price filters
     if (minPrice) filters.price_per_night = { $gte: Number(minPrice) };
     if (maxPrice) {
       filters.price_per_night = filters.price_per_night || {};
       filters.price_per_night.$lte = Number(maxPrice);
     }
 
-    // Add filter for ratings
-    if (ratings) filters.ratings = Number(ratings);
-  filters.status = "active";
+    filters.status = "active";
+
+    // Find listings based on filters
     let listings = await StayListing.find(filters)
-      .skip(offset) // Skip the first 'offset' listings
-      .limit(limit) // Limit the number of listings to 'limit'
+      .skip(offset)
+      .limit(limit)
       .lean();
 
+    // If no listings are found, fetch without filters
     if (listings.length === 0) {
-      // If no listings are found, fetch without filters
-      listings = await StayListing.find({
-        status: "active",
-      }).skip(offset).limit(limit).lean();
+      listings = await StayListing.find({ status: "active" })
+        .skip(offset)
+        .limit(limit)
+        .lean();
     }
 
-    const listingsWithImages = await Promise.all(
+    // Calculate average rating and count of reviews for each listing, then add images
+    const listingsWithDetails = await Promise.all(
       listings.map(async (listing) => {
         const images = await MediaTag.find({ listing_id: listing._id }).lean();
-        return { ...listing, images };
+
+        // Aggregate to get the average rating and review count for the listing
+        const reviewData = await Reviews.aggregate([
+          { $match: { listingId: listing._id } },
+          {
+            $group: {
+              _id: "$listingId",
+              averageRating: { $avg: { $toDouble: "$rating" } },
+              reviewCount: { $sum: 1 },
+            },
+          },
+        ]);
+
+        const averageRating =
+          reviewData.length > 0
+            ? Number(reviewData[0].averageRating.toFixed(1))
+            : null;
+        const reviewCount =
+          reviewData.length > 0 ? reviewData[0].reviewCount : 0;
+
+        return { ...listing, images, averageRating, reviewCount };
       })
     );
 
-    res.status(200).json(listingsWithImages);
+    // Filter listings to only include those with the exact rating specified by the user
+    const filteredListings = listingsWithDetails.filter(
+      (listing) => !ratings || listing.averageRating === Number(ratings)
+    );
+
+    res.status(200).json(filteredListings);
   } catch (error) {
     console.error("Error fetching listings:", error);
     res.status(500).json({ error: "Failed to fetch listings" });
@@ -2690,12 +4172,13 @@ const getListings = async (req, res) => {
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, "/uploads");
+    cb(null, "uploads/");
   },
   filename: function (req, file, cb) {
     cb(null, Date.now() + path.extname(file.originalname));
   },
 });
+
 const upload = multer({ storage: storage });
 
 const uploadReceipt = async (req, res) => {
@@ -2704,18 +4187,23 @@ const uploadReceipt = async (req, res) => {
       return res.status(400).json({ error: "No file uploaded" });
     }
 
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'];
+    const allowedTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/gif",
+      "application/pdf",
+    ];
     if (!allowedTypes.includes(req.file.mimetype)) {
-
       fs.unlinkSync(req.file.path);
-      return res.status(400).json({ error: "Invalid file type. Only images and PDFs are allowed." });
+      return res.status(400).json({
+        error: "Invalid file type. Only images and PDFs are allowed.",
+      });
     }
 
     const bookingId = req.params.bookingId;
-    
+
     const booking = await Booking.findById(bookingId);
     if (!booking) {
- 
       fs.unlinkSync(req.file.path);
       return res.status(404).json({ error: "Booking not found" });
     }
@@ -2723,7 +4211,7 @@ const uploadReceipt = async (req, res) => {
     const receipt = new Receipts({
       booking_id: bookingId,
       media_name: req.file.filename,
-      media_location: req.file.path
+      media_location: req.file.path,
     });
 
     await receipt.save();
@@ -2732,8 +4220,8 @@ const uploadReceipt = async (req, res) => {
       message: "Receipt uploaded successfully",
       receipt: {
         id: receipt._id,
-        filename: receipt.media_name
-      }
+        filename: receipt.media_name,
+      },
     });
   } catch (error) {
     // Clean up uploaded file if there's an error
@@ -2750,29 +4238,31 @@ const uploadReceiptPickup = async (req, res) => {
       return res.status(400).json({ error: "No file uploaded" });
     }
 
-    // Validate file type
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'];
+    const allowedTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/gif",
+      "application/pdf",
+    ];
     if (!allowedTypes.includes(req.file.mimetype)) {
-      // Delete the invalid file
       fs.unlinkSync(req.file.path);
-      return res.status(400).json({ error: "Invalid file type. Only images and PDFs are allowed." });
+      return res.status(400).json({
+        error: "Invalid file type. Only images and PDFs are allowed.",
+      });
     }
 
     const bookingId = req.params.bookingId;
-    
-    // Verify booking exists
+
     const booking = await ServiceBooking.findById(bookingId);
     if (!booking) {
-      // Delete the uploaded file if booking doesn't exist
       fs.unlinkSync(req.file.path);
       return res.status(404).json({ error: "Booking not found" });
     }
 
-    // Create new receipt record
     const receipt = new Receipts({
       booking_id: bookingId,
       media_name: req.file.filename,
-      media_location: req.file.path
+      media_location: req.file.path,
     });
 
     await receipt.save();
@@ -2781,8 +4271,8 @@ const uploadReceiptPickup = async (req, res) => {
       message: "Receipt uploaded successfully",
       receipt: {
         id: receipt._id,
-        filename: receipt.media_name
-      }
+        filename: receipt.media_name,
+      },
     });
   } catch (error) {
     if (req.file) {
@@ -2798,19 +4288,23 @@ const uploadReceiptOffice = async (req, res) => {
       return res.status(400).json({ error: "No file uploaded" });
     }
 
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'];
+    const allowedTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/gif",
+      "application/pdf",
+    ];
     if (!allowedTypes.includes(req.file.mimetype)) {
-
       fs.unlinkSync(req.file.path);
-      return res.status(400).json({ error: "Invalid file type. Only images and PDFs are allowed." });
+      return res.status(400).json({
+        error: "Invalid file type. Only images and PDFs are allowed.",
+      });
     }
 
     const bookingId = req.params.bookingId;
-    
 
     const booking = await CoofficeBooking.findById(bookingId);
     if (!booking) {
-    
       fs.unlinkSync(req.file.path);
       return res.status(404).json({ error: "Booking not found" });
     }
@@ -2818,7 +4312,7 @@ const uploadReceiptOffice = async (req, res) => {
     const receipt = new Receipts({
       booking_id: bookingId,
       media_name: req.file.filename,
-      media_location: req.file.path
+      media_location: req.file.path,
     });
 
     await receipt.save();
@@ -2827,11 +4321,10 @@ const uploadReceiptOffice = async (req, res) => {
       message: "Receipt uploaded successfully",
       receipt: {
         id: receipt._id,
-        filename: receipt.media_name
-      }
+        filename: receipt.media_name,
+      },
     });
   } catch (error) {
-   
     if (req.file) {
       fs.unlinkSync(req.file.path);
     }
@@ -2846,26 +4339,31 @@ const uploadReceiptRental = async (req, res) => {
       return res.status(400).json({ error: "No file uploaded" });
     }
 
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'];
+    const allowedTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/gif",
+      "application/pdf",
+    ];
     if (!allowedTypes.includes(req.file.mimetype)) {
-      fs.unlinkSync(req.file.path); 
-      return res.status(400).json({ error: "Invalid file type. Only images and PDFs are allowed." });
+      fs.unlinkSync(req.file.path);
+      return res.status(400).json({
+        error: "Invalid file type. Only images and PDFs are allowed.",
+      });
     }
 
     const bookingId = req.params.bookingId;
-    
-   
+
     const booking = await Rental.findById(bookingId);
     if (!booking) {
-      fs.unlinkSync(req.file.path); 
+      fs.unlinkSync(req.file.path);
       return res.status(404).json({ error: "Booking not found" });
     }
 
-    // Create new receipt record
     const receipt = new Receipts({
       booking_id: bookingId,
       media_name: req.file.filename,
-      media_location: req.file.path // Ensure this points to the correct location
+      media_location: req.file.path,
     });
 
     await receipt.save();
@@ -2875,11 +4373,10 @@ const uploadReceiptRental = async (req, res) => {
       receipt: {
         id: receipt._id,
         media_name: receipt.media_name,
-        media_location: receipt.media_location // Return the path to the uploaded file
-      }
+        media_location: receipt.media_location, // Return the path to the uploaded file
+      },
     });
   } catch (error) {
-    // Clean up uploaded file if there's an error
     if (req.file) {
       fs.unlinkSync(req.file.path);
     }
@@ -2952,10 +4449,11 @@ const createRental = async (req, res) => {
     if (!parsedBody.insurance) validationErrors.push("Insurance is required");
     if (!parsedBody.fuel) validationErrors.push("Fuel is required");
 
-        
     if (!req.files || req.files.length < 4 || req.files.length > 15) {
       validationErrors.push(
-        `Please upload between 4 and 15 images. You uploaded ${req.files ? req.files.length : 0}.`
+        `Please upload between 4 and 15 images. You uploaded ${
+          req.files ? req.files.length : 0
+        }.`
       );
     }
 
@@ -2996,6 +4494,122 @@ const createRental = async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 };
+const updateRental = async (req, res) => {
+  try {
+    const { token } = req.cookies;
+    if (!token) {
+      return res.status(401).json({ error: "No token provided" });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findOne({ email: decoded.email });
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const { id } = req.params;
+    const existingRental = await CarRental.findById(id);
+    if (!existingRental) {
+      return res.status(404).json({ error: "Rental not found" });
+    }
+
+    const parsedBody = {
+      carNameModel: req.body.carNameModel,
+      carType: req.body.carType,
+      description: req.body.description,
+      carMakeModel: req.body.carMakeModel,
+      carColor: req.body.carColor,
+      plateNumber: req.body.plateNumber,
+      mileage: req.body.mileage,
+      driverName: req.body.driverName,
+      driverLicenseNumber: req.body.driverLicenseNumber,
+      driverPhoneNumber: req.body.driverPhoneNumber,
+      driverEmail: req.body.driverEmail,
+      rentalPrice: req.body.rentalPrice,
+      insurance: req.body.insurance,
+      fuel: req.body.fuel,
+      extraDriver: req.body.extraDriver === "true",
+      availableFrom: new Date(req.body.availableFrom),
+      availableTo: new Date(req.body.availableTo),
+      cancellationPolicy: req.body.cancellationPolicy,
+      refundPolicy: req.body.refundPolicy,
+      contactName: req.body.contactName,
+      contactPhone: req.body.contactPhone,
+      contactEmail: req.body.contactEmail,
+    };
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      Object.assign(existingRental, parsedBody);
+      await existingRental.save({ session });
+
+      // Handle existing images
+      const existingImages = req.body.existingImages;
+      const existingImageUrls = Array.isArray(existingImages)
+        ? existingImages
+        : existingImages
+        ? [existingImages]
+        : [];
+
+      const currentMediaTags = await MediaTag.find({ listing_id: id });
+
+      // Find media tags to delete (those not in existingImageUrls)
+      const toDelete = currentMediaTags.filter(
+        (tag) => !existingImageUrls.includes(tag.media_location)
+      );
+
+      if (toDelete.length > 0) {
+        await MediaTag.deleteMany(
+          {
+            listing_id: id,
+            media_location: { $in: toDelete.map((tag) => tag.media_location) },
+          },
+          { session }
+        );
+      }
+
+      // Handle new images - Keep existing images and add new ones if provided
+      if (req.files && req.files.length > 0) {
+        const newMediaTags = req.files.map((file) => ({
+          listing_id: existingRental._id,
+          media_name: file.filename,
+          media_location: file.path,
+          size: file.size,
+        }));
+
+        await MediaTag.insertMany(newMediaTags, { session });
+      }
+
+      // Commit the transaction
+      await session.commitTransaction();
+
+      // Get updated rental with all images
+      const updatedMediaTags = await MediaTag.find({ listing_id: id });
+
+      res.status(200).json({
+        message: "Rental updated successfully",
+        rental: {
+          ...existingRental.toObject(),
+          images: updatedMediaTags.map((tag) => ({
+            location: tag.media_location,
+            name: tag.media_name,
+          })),
+        },
+      });
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      session.endSession();
+    }
+  } catch (error) {
+    console.error("Error updating rental:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
 const updateListing = async (req, res) => {
   try {
     const { token } = req.cookies;
@@ -3055,59 +4669,61 @@ const updateListing = async (req, res) => {
       Object.assign(existingListing, parsedBody);
       await existingListing.save({ session });
 
- // Handle existing images
-const existingImages = req.body.existingImages;
-// Ensure we always have an array, even with a single image
-const existingImageUrls = Array.isArray(existingImages) 
-  ? existingImages 
-  : existingImages ? [existingImages] : [];
+      // Handle existing images
+      const existingImages = req.body.existingImages;
+      // Ensure we always have an array, even with a single image
+      const existingImageUrls = Array.isArray(existingImages)
+        ? existingImages
+        : existingImages
+        ? [existingImages]
+        : [];
 
-// Get current media tags
-const currentMediaTags = await MediaTag.find({ listing_id: id });
+      // Get current media tags
+      const currentMediaTags = await MediaTag.find({ listing_id: id });
 
-// Find media tags to delete (those not in existingImageUrls)
-const toDelete = currentMediaTags.filter(
-  (tag) => !existingImageUrls.includes(tag.media_location)
-);
+      // Find media tags to delete (those not in existingImageUrls)
+      const toDelete = currentMediaTags.filter(
+        (tag) => !existingImageUrls.includes(tag.media_location)
+      );
 
-// Delete only the removed media tags
-if (toDelete.length > 0) {
-  await MediaTag.deleteMany(
-    { 
-      listing_id: id,
-      media_location: { $in: toDelete.map(tag => tag.media_location) }
-    },
-    { session }
-  );
-}
+      // Delete only the removed media tags
+      if (toDelete.length > 0) {
+        await MediaTag.deleteMany(
+          {
+            listing_id: id,
+            media_location: { $in: toDelete.map((tag) => tag.media_location) },
+          },
+          { session }
+        );
+      }
 
-// Handle new images - Keep existing images and add new ones
-if (req.files && req.files.length > 0) {
-  const newMediaTags = req.files.map(file => ({
-    listing_id: existingListing._id,
-    media_name: file.filename,
-    media_location: file.path,
-    size: file.size,
-  }));
+      // Handle new images - Keep existing images and add new ones
+      if (req.files && req.files.length > 0) {
+        const newMediaTags = req.files.map((file) => ({
+          listing_id: existingListing._id,
+          media_name: file.filename,
+          media_location: file.path,
+          size: file.size,
+        }));
 
-  await MediaTag.insertMany(newMediaTags, { session });
-}
+        await MediaTag.insertMany(newMediaTags, { session });
+      }
 
       // Commit the transaction
       await session.commitTransaction();
 
       // Get updated listing with all images
       const updatedMediaTags = await MediaTag.find({ listing_id: id });
-      
+
       res.status(200).json({
         message: "Stay listing updated successfully",
         stay_listing: {
           ...existingListing.toObject(),
-          images: updatedMediaTags.map(tag => ({
+          images: updatedMediaTags.map((tag) => ({
             location: tag.media_location,
-            name: tag.media_name
-          }))
-        }
+            name: tag.media_name,
+          })),
+        },
       });
     } catch (error) {
       await session.abortTransaction();
@@ -3120,8 +4736,122 @@ if (req.files && req.files.length > 0) {
     res.status(500).json({ error: "Internal server error" });
   }
 };
+const updateService = async (req, res) => {
+  try {
+    const { token } = req.cookies;
+    if (!token) {
+      return res.status(401).json({ error: "No token provided" });
+    }
 
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findOne({ email: decoded.email });
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
 
+    const { id } = req.params;
+    const existingService = await Service.findById(id);
+    if (!existingService) {
+      return res.status(404).json({ error: "Service not found" });
+    }
+
+    // Parse form data for updating fields
+    const parsedBody = {
+      serviceName: req.body.serviceName,
+      description: req.body.description,
+      carMakeModel: req.body.carMakeModel,
+      carColor: req.body.carColor,
+      plateNumber: req.body.plateNumber,
+      driverName: req.body.driverName,
+      driverLicenseNumber: req.body.driverLicenseNumber,
+      driverPhoneNumber: req.body.driverPhoneNumber,
+      driverEmail: req.body.driverEmail,
+      pickupPrice: parseFloat(req.body.pickupPrice),
+      extraLuggage: parseInt(req.body.extraLuggage),
+      waitingTime: parseInt(req.body.waitingTime),
+      availableFrom: new Date(req.body.availableFrom),
+      availableTo: new Date(req.body.availableTo),
+      cancellationPolicy: req.body.cancellationPolicy,
+      refundPolicy: req.body.refundPolicy,
+      contactName: req.body.contactName,
+      contactPhone: req.body.contactPhone,
+      contactEmail: req.body.contactEmail,
+    };
+
+    // Start a session for transaction
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      // Update the service
+      Object.assign(existingService, parsedBody);
+      await existingService.save({ session });
+
+      // Handle existing images
+      const existingImages = req.body.existingImages;
+      const existingImageUrls = Array.isArray(existingImages)
+        ? existingImages
+        : existingImages
+        ? [existingImages]
+        : [];
+
+      const currentMediaTags = await MediaTag.find({ listing_id: id });
+
+      // Find media tags to delete (those not in existingImageUrls)
+      const toDelete = currentMediaTags.filter(
+        (tag) => !existingImageUrls.includes(tag.media_location)
+      );
+
+      // Delete only the removed media tags
+      if (toDelete.length > 0) {
+        await MediaTag.deleteMany(
+          {
+            listing_id: id,
+            media_location: { $in: toDelete.map((tag) => tag.media_location) },
+          },
+          { session }
+        );
+      }
+
+      // Handle new images - Keep existing images and add new ones
+      if (req.files && req.files.length > 0) {
+        const newMediaTags = req.files.map((file) => ({
+          listing_id: existingService._id,
+          media_name: file.filename,
+          media_location: file.path,
+          size: file.size,
+        }));
+
+        await MediaTag.insertMany(newMediaTags, { session });
+      }
+
+      // Commit the transaction
+      await session.commitTransaction();
+
+      // Get updated service with all images
+      const updatedMediaTags = await MediaTag.find({ listing_id: id });
+
+      res.status(200).json({
+        message: "Service updated successfully",
+        service: {
+          ...existingService.toObject(),
+          images: updatedMediaTags.map((tag) => ({
+            location: tag.media_location,
+            name: tag.media_name,
+          })),
+        },
+      });
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      session.endSession();
+    }
+  } catch (error) {
+    console.error("Error updating service:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
 
 const getStayListing = async (req, res) => {
   try {
@@ -3142,7 +4872,6 @@ const getStayListing = async (req, res) => {
       return res.status(404).json({ error: "Stay listing not found" });
     }
 
-    // Fetch related images
     const mediaTags = await MediaTag.find({ listing_id: listingId });
     const images = mediaTags.map((media) => ({
       name: media.media_name,
@@ -3153,6 +4882,123 @@ const getStayListing = async (req, res) => {
     res.status(200).json({
       message: "Stay listing fetched successfully",
       stayListing: {
+        ...stayListing,
+        images,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching stay listing:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+const getServiceListing = async (req, res) => {
+  try {
+    const { token } = req.cookies;
+    if (!token) {
+      return res.status(401).json({ error: "No token provided" });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findOne({ email: decoded.email });
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const listingId = req.params.id;
+    const stayListing = await Service.findById(listingId).lean();
+    if (!stayListing) {
+      return res.status(404).json({ error: "Stay listing not found" });
+    }
+
+    const mediaTags = await MediaTag.find({ listing_id: listingId });
+    const images = mediaTags.map((media) => ({
+      name: media.media_name,
+      location: media.media_location,
+      size: media.size,
+    }));
+
+    res.status(200).json({
+      message: "Stay listing fetched successfully",
+      serviceListing: {
+        ...stayListing,
+        images,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching stay listing:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+const getOfficeListing = async (req, res) => {
+  try {
+    const { token } = req.cookies;
+    if (!token) {
+      return res.status(401).json({ error: "No token provided" });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findOne({ email: decoded.email });
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const listingId = req.params.id;
+    const stayListing = await OfficeSpace.findById(listingId).lean();
+    if (!stayListing) {
+      return res.status(404).json({ error: "Stay listing not found" });
+    }
+
+    const mediaTags = await MediaTag.find({ listing_id: listingId });
+    const images = mediaTags.map((media) => ({
+      name: media.media_name,
+      location: media.media_location,
+      size: media.size,
+    }));
+
+    res.status(200).json({
+      message: "Stay listing fetched successfully",
+      officeListing: {
+        ...stayListing,
+        images,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching stay listing:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+const getRentalListing = async (req, res) => {
+  try {
+    const { token } = req.cookies;
+    if (!token) {
+      return res.status(401).json({ error: "No token provided" });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findOne({ email: decoded.email });
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const listingId = req.params.id;
+    const stayListing = await CarRental.findById(listingId).lean();
+    if (!stayListing) {
+      return res.status(404).json({ error: "Stay listing not found" });
+    }
+
+    const mediaTags = await MediaTag.find({ listing_id: listingId });
+    const images = mediaTags.map((media) => ({
+      name: media.media_name,
+      location: media.media_location,
+      size: media.size,
+    }));
+
+    res.status(200).json({
+      message: "Stay listing fetched successfully",
+      rentalListing: {
         ...stayListing,
         images,
       },
@@ -3225,10 +5071,11 @@ const createStayListing = async (req, res) => {
     if (isNaN(parsedBody.monthly_discount))
       validationErrors.push("Invalid monthly discount");
 
-    
     if (!req.files || req.files.length < 4 || req.files.length > 15) {
       validationErrors.push(
-        `Please upload between 4 and 15 images. You uploaded ${req.files ? req.files.length : 0}.`
+        `Please upload between 4 and 15 images. You uploaded ${
+          req.files ? req.files.length : 0
+        }.`
       );
     }
 
@@ -3242,7 +5089,6 @@ const createStayListing = async (req, res) => {
 
     await newStayListing.save();
 
-    // Saving uploaded images
     if (req.files && req.files.length > 0) {
       for (const file of req.files) {
         const mediaTag = new MediaTag({
@@ -3273,6 +5119,178 @@ const createStayListing = async (req, res) => {
   }
 };
 
+const updateOffice = async (req, res) => {
+  try {
+    const { token } = req.cookies;
+    if (!token) {
+      return res.status(401).json({ error: "No token provided" });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findOne({ email: decoded.email });
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const { id } = req.params;
+    const existingOffice = await OfficeSpace.findById(id);
+    if (!existingOffice) {
+      return res.status(404).json({ error: "Office listing not found" });
+    }
+
+    const parsedBody = {
+      office_space_name: req.body.officeSpaceName,
+      city: req.body.city,
+      state_name: req.body.state_name,
+      office_type: req.body.officeType,
+      description: req.body.description,
+      size_of_office: parseInt(req.body.size),
+      number_of_desks: parseInt(req.body.numDesks),
+      wifi: req.body.wifi === "true",
+      conference_room: req.body.conferenceRooms === "true",
+      parking: req.body.parking === "true",
+      printers: req.body.printers === "true",
+      pets: req.body.pets === "true",
+      smoking: req.body.smoking === "true",
+      no_loud_noises: req.body.noises === "true",
+      catering: req.body.catering === "true",
+      administrative_support: req.body.support === "true",
+      price_per_day: parseFloat(req.body.pricePerDay),
+      price_weekly: parseFloat(req.body.pricePerWeek),
+      price_monthly: parseFloat(req.body.pricePerMonth),
+      available_from: new Date(req.body.availableFrom),
+      available_to: new Date(req.body.availableTo),
+      cancellation_policy: req.body.cancellationPolicy,
+      refund_policy: req.body.refundPolicy,
+      contact_name: req.body.contactName,
+      contact_phone: req.body.contactPhone,
+      contact_email: req.body.contactEmail,
+      security_levy: req.body.securityDeposit,
+    };
+
+    // Start a session for transaction
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      // Update the office listing fields
+      Object.assign(existingOffice, parsedBody);
+      await existingOffice.save({ session });
+
+      // Handle existing images
+      const existingImages = req.body.existingImages;
+      const existingImageUrls = Array.isArray(existingImages)
+        ? existingImages
+        : existingImages
+        ? [existingImages]
+        : [];
+
+      // Get current media tags
+      const currentMediaTags = await MediaTag.find({ listing_id: id });
+
+      // Identify media tags to delete (those not in existingImageUrls)
+      const toDelete = currentMediaTags.filter(
+        (tag) => !existingImageUrls.includes(tag.media_location)
+      );
+
+      // Delete only the removed media tags
+      if (toDelete.length > 0) {
+        await MediaTag.deleteMany(
+          {
+            listing_id: id,
+            media_location: { $in: toDelete.map((tag) => tag.media_location) },
+          },
+          { session }
+        );
+      }
+
+      // Handle new images - Keep existing images and add new ones
+      if (req.files && req.files.length > 0) {
+        const newMediaTags = req.files.map((file) => ({
+          listing_id: existingOffice._id,
+          media_name: file.filename,
+          media_location: file.path,
+          size: file.size,
+        }));
+
+        await MediaTag.insertMany(newMediaTags, { session });
+      }
+
+      // Commit the transaction
+      await session.commitTransaction();
+
+      // Retrieve updated media tags for response
+      const updatedMediaTags = await MediaTag.find({ listing_id: id });
+
+      res.status(200).json({
+        message: "Office listing updated successfully",
+        office_listing: {
+          ...existingOffice.toObject(),
+          images: updatedMediaTags.map((tag) => ({
+            location: tag.media_location,
+            name: tag.media_name,
+          })),
+        },
+      });
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      session.endSession();
+    }
+  } catch (error) {
+    console.error("Error updating office listing:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+const Review = async (req, res) => {
+  const { userId, bookingId, listingId, rating, review } = req.body;
+
+  try {
+    // Check if a review for the user and booking already exists
+    const existingReview = await Reviews.findOne({ userId, bookingId });
+
+    if (existingReview) {
+      // Update the existing review
+      existingReview.rating = rating;
+      existingReview.review = review;
+      await existingReview.save();
+      res.status(200).json({ message: "Review updated successfully" });
+    } else {
+      // Create a new review
+      const newReview = new Reviews({
+        userId,
+        bookingId,
+        listingId,
+        rating,
+        review,
+      });
+      await newReview.save();
+      res.status(200).json({ message: "Review submitted successfully" });
+    }
+  } catch (error) {
+    console.error("Error saving review:", error);
+    res.status(500).json({ message: "Failed to submit review" });
+  }
+};
+
+const getReview = async (req, res) => {
+  const { userId, bookingId } = req.params;
+
+  try {
+    const review = await Reviews.findOne({ userId, bookingId });
+
+    if (review) {
+      res.status(200).json(review);
+    } else {
+      res.status(404).json({ message: "No review found" });
+    }
+  } catch (error) {
+    console.error("Error fetching review:", error);
+    res.status(500).json({ message: "Failed to fetch review" });
+  }
+};
 
 const createOfficeListing = async (req, res) => {
   try {
@@ -3336,7 +5354,9 @@ const createOfficeListing = async (req, res) => {
 
     if (!req.files || req.files.length < 4 || req.files.length > 15) {
       validationErrors.push(
-        `Please upload between 4 and 15 images. You uploaded ${req.files ? req.files.length : 0}.`
+        `Please upload between 4 and 15 images. You uploaded ${
+          req.files ? req.files.length : 0
+        }.`
       );
     }
 
@@ -3405,7 +5425,83 @@ const verifyAccount = async (req, res) => {
     user.code = null;
     await user.save();
 
-    return res.status(200).json({ message: "Account verified successfully" });
+    // Sign the JWT token and add 'interface': 'user' to the payload
+    jwt.sign(
+      {
+        email: user.email,
+        id: user._id,
+        first_name: user.first_name,
+        interface: "user", // Add 'interface': 'user' to the JWT payload
+      },
+      process.env.JWT_SECRET,
+      {},
+      async (err, token) => {
+        if (err) throw err;
+
+        // Send login notification email
+        const loginTime = new Date().toLocaleString();
+        await sendLoginEmail(user.email, loginTime);
+
+        return res
+          .status(200)
+          .json({ message: "Account verified successfully", token });
+      }
+    );
+  } catch (error) {
+    console.error("Error during account verification:", error);
+    return res
+      .status(500)
+      .json({ error: "Server error, please try again later" });
+  }
+};
+const verifyAccountPartner = async (req, res) => {
+  try {
+    const { email, code } = req.body;
+
+    // Find the user by email
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Check if the user is already verified
+    if (user.is_verified) {
+      return res.status(400).json({ error: "User is already verified" });
+    }
+
+    // Check if the provided code matches the stored code
+    if (user.code !== code) {
+      return res.status(400).json({ error: "Invalid verification code" });
+    }
+
+    // Update user as verified and clear the verification code
+    user.is_verified = true;
+    user.code = null;
+    await user.save();
+
+    // Sign the JWT token and add 'interface': 'user' to the payload
+    jwt.sign(
+      {
+        email: user.email,
+        id: user._id,
+        first_name: user.first_name,
+        interface: "partner", // Add 'interface': 'user' to the JWT payload
+      },
+      process.env.JWT_SECRET,
+      {},
+      async (err, token) => {
+        if (err) throw err;
+
+        // Send login notification email
+        const loginTime = new Date().toLocaleString();
+        await sendLoginEmail(user.email, loginTime);
+
+        return res
+          .status(200)
+          .json({ message: "Account verified successfully", token });
+      }
+    );
   } catch (error) {
     console.error("Error during account verification:", error);
     return res
@@ -3464,7 +5560,7 @@ const sendRecoveryEmail = async (email, newPassword) => {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Your SmashApartment.com Password Reset</title>
+    <title>Your smashapartments.com Password Reset</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body style="font-family: 'Montserrat', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -3477,17 +5573,17 @@ const sendRecoveryEmail = async (email, newPassword) => {
     <main style="padding: 20px;">
         <h1 style="color: #221f60; font-family: 'Montserrat', Arial, sans-serif; font-weight: 700;">Password Reset</h1>
         <p>Hello,</p>
-        <p>Your password for SmashApartment.com has been reset. Your new password is:</p>
+        <p>Your password for smashapartments.com has been reset. Your new password is:</p>
         <p style="font-size: 24px; font-weight: 700; color: #ff8c00; text-align: center;">${newPassword}</p>
         <p>Please log in with this password and change it immediately for security reasons.</p>
         <p>If you didn't request this password reset, please contact our support team immediately.</p>
-        <p>The SmashApartment.com Team</p>
+        <p>The smashapartments.com Team</p>
     </main>
     
     <footer style="background-color: #f4f4f4; padding: 20px; text-align: center; font-size: 12px;">
-        <p>This email is from SmashApartment.com. If you are receiving this email, it means that a password reset was requested for your account.</p>
-        <p>For support, please contact us at: <a href="mailto:support@smashapartment.com" style="color: #ff8c00;">support@smashapartment.com</a></p>
-        <p>&copy; 2024 SmashApartment.com. All rights reserved.</p>
+        <p>This email is from smashapartments.com. If you are receiving this email, it means that a password reset was requested for your account.</p>
+        <p>For support, please contact us at: <a href="mailto:support@smashapartments.com" style="color: #ff8c00;">support@smashapartments.com</a></p>
+        <p>&copy; 2024 smashapartments.com. All rights reserved.</p>
         <p><a href="#" style="color: #ff8c00;">Privacy Policy</a> | <a href="#" style="color: #ff8c00;">Terms of Service</a></p>
     </footer>
 </body>
@@ -3497,7 +5593,7 @@ const sendRecoveryEmail = async (email, newPassword) => {
   const mailOptions = {
     from: sender,
     to: [email],
-    subject: "Your SmashApartment.com Password Has Been Reset",
+    subject: "Your smashapartments.com Password Has Been Reset",
     text: `Your new password is: ${newPassword}`,
     html: htmlTemplate,
     category: "Password Reset",
@@ -3512,67 +5608,86 @@ const sendRecoveryEmail = async (email, newPassword) => {
   }
 };
 
-// Register endpoint
 const registerUser = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, firstName, lastName, phoneNumber, DOB, password, gId } =
+      req.body;
 
-    // Validate email
-    if (!email) {
-      return res.json({
-        error: "Email is required",
+    // Data validation checks
+    if (
+      !email ||
+      !firstName ||
+      !lastName ||
+      !phoneNumber ||
+      !DOB ||
+      !password
+    ) {
+      return res.status(400).json({
+        error: "All fields are required",
       });
     }
 
-    // Validate password
-    if (!password || password.length < 6) {
-      return res.json({
-        error: "Password is required and should be at least 6 characters",
+    // Password complexity checks
+    if (password.length < 6) {
+      return res.status(400).json({
+        error: "Password must be at least 6 characters long",
       });
     }
 
-    // Check if email already exists
     const exist = await User.findOne({ email });
     if (exist) {
-      return res.json({
+      return res.status(400).json({
         error: "Account exists. Sign in as a partner or customer",
       });
     }
 
-    // Generate 6-digit verification code
+    const hashedPassword = await hashPassword(password);
     const verificationCode = crypto.randomInt(100000, 999999).toString();
 
-    // Hash the password using the helper function
-    const hashedPassword = await hashPassword(password);
-
-    // Create the user with hashed password and verification code
     const user = await User.create({
       email,
       password: hashedPassword,
+      account_type: "user",
+      first_name: firstName,
+      last_name: lastName,
+      phone_number: phoneNumber,
+      dob: DOB,
       is_verified: false,
       code: verificationCode,
     });
 
-    // Send verification email
+    // Save the uploaded document to the MediaTag schema
+    if (req.file) {
+      const mediaTag = new MediaTag({
+        listing_id: user._id,
+        media_name: req.file.filename,
+        media_location: req.file.path,
+        size: req.file.size,
+      });
+      await mediaTag.save();
+    }
+
+    // Call the external function to send the verification code
     await sendVerificationEmail(email, verificationCode);
 
-    // Return the created user (without password)
-    return res.json({
+    return res.status(201).json({
       message: "Check your email for verification code",
       user: {
         id: user._id,
         email: user.email,
+        firstName: user.first_name,
+        lastName: user.last_name,
+        phoneNumber: user.phone_number,
+        DOB: user.dob,
       },
     });
   } catch (error) {
     console.error("Error during registration:", error);
-    return res.json({
+    return res.status(500).json({
       error: "Server error, please try again later",
     });
   }
 };
-
-// Function to send verification email using Mailtrap
 const sendVerificationEmail = async (email, code) => {
   const htmlTemplate = `
 <!DOCTYPE html>
@@ -3580,7 +5695,7 @@ const sendVerificationEmail = async (email, code) => {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Your SmashApartment.com Account Creation Code</title>
+    <title>Your smashapartments.com Account Creation Code</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body style="font-family: 'Montserrat', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -3601,17 +5716,17 @@ const sendVerificationEmail = async (email, code) => {
     <main style="padding: 20px;">
         <h1 style="color: #221f60; font-family: 'Montserrat', Arial, sans-serif; font-weight: 700;">Verification OTP</h1>
         <p>Hello,</p>
-        <p>Thank you for creating an account with SmashApartment.com. To complete your registration, please use the following code:</p>
+        <p>Thank you for creating an account with smashapartments.com. To complete your registration, please use the following code:</p>
         <p style="font-size: 24px; font-weight: 700; color: #ff8c00; text-align: center;">${code}</p>
         <p>If you didn't request this code, please ignore this email.</p>
         <p>Happy booking!</p>
-        <p>The SmashApartment.com Team</p>
+        <p>The smashapartments.com Team</p>
     </main>
     
     <footer style="background-color: #f4f4f4; padding: 20px; text-align: center; font-size: 12px;">
-        <p>This email is from SmashApartment.com. If you are receiving this email, it means that you or someone else used this email address to create an account with us.</p>
-        <p>For support, please contact us at: <a href="mailto:support@smashapartment.com" style="color: #ff8c00;">support@smashapartment.com</a></p>
-        <p>&copy; 2024 SmashApartment.com. All rights reserved.</p>
+        <p>This email is from smashapartments.com. If you are receiving this email, it means that you or someone else used this email address to create an account with us.</p>
+        <p>For support, please contact us at: <a href="mailto:support@smashapartments.com" style="color: #ff8c00;">support@smashapartments.com</a></p>
+        <p>&copy; 2024 smashapartments.com. All rights reserved.</p>
         <p><a href="#" style="color: #ff8c00;">Privacy Policy</a> | <a href="#" style="color: #ff8c00;">Terms of Service</a></p>
     </footer>
 </body>
@@ -3621,10 +5736,11 @@ const sendVerificationEmail = async (email, code) => {
   const mailOptions = {
     from: sender,
     to: [email],
-    subject: "Verify Your SmashApartment.com Account",
+    subject: "Verify Your smashapartments.com Account",
     text: `Your verification code is: ${code}`,
     html: htmlTemplate,
     category: "Verification",
+    
   };
 
   try {
@@ -3643,7 +5759,7 @@ const sendLoginEmail = async (email, loginTime) => {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login Notification - SmashApartment.com</title>
+    <title>Login Notification - smashapartments.com</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body style="font-family: 'Montserrat', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -3656,18 +5772,18 @@ const sendLoginEmail = async (email, loginTime) => {
     <main style="padding: 20px;">
         <h1 style="color: #221f60; font-family: 'Montserrat', Arial, sans-serif; font-weight: 700;">Login Notification</h1>
         <p>Hello,</p>
-        <p>We detected a new sign-in to your SmashApartment.com account.</p>
+        <p>We detected a new sign-in to your smashapartments.com account.</p>
         <p>Time of login: <strong>${loginTime}</strong></p>
         <p>If this was you, no further action is needed. If you didn't sign in to your account at this time, please contact our support team immediately.</p>
-        <p>Thank you for using SmashApartment.com!</p>
+        <p>Thank you for using smashapartments.com!</p>
         <p>Best regards,</p>
-        <p>The SmashApartment.com Team</p>
+        <p>The smashapartments.com Team</p>
     </main>
     
     <footer style="background-color: #f4f4f4; padding: 20px; text-align: center; font-size: 12px;">
-        <p>This is an automated message from SmashApartment.com. Please do not reply to this email.</p>
-        <p>For support, please contact us at: <a href="mailto:support@smashapartment.com" style="color: #ff8c00;">support@smashapartment.com</a></p>
-        <p>&copy; 2024 SmashApartment.com. All rights reserved.</p>
+        <p>This is an automated message from smashapartments.com. Please do not reply to this email.</p>
+        <p>For support, please contact us at: <a href="mailto:support@smashapartments.com" style="color: #ff8c00;">support@smashapartments.com</a></p>
+        <p>&copy; 2024 smashapartments.com. All rights reserved.</p>
         <p><a href="#" style="color: #ff8c00;">Privacy Policy</a> | <a href="#" style="color: #ff8c00;">Terms of Service</a></p>
     </footer>
 </body>
@@ -3677,10 +5793,11 @@ const sendLoginEmail = async (email, loginTime) => {
   const mailOptions = {
     from: sender,
     to: [email],
-    subject: "New Login to Your SmashApartment.com Account",
+    subject: "New Login to Your smashapartments.com Account",
     text: `A new login to your account was detected at ${loginTime}. If this wasn't you, please contact support.`,
     html: htmlTemplate,
     category: "Login Notification",
+    
   };
 
   try {
@@ -3803,12 +5920,11 @@ const loginPartner = async (req, res) => {
 
         // Send login notification email
         const loginTime = new Date().toLocaleString();
-       try {
-         await sendLoginEmail(user.email, loginTime);
-       } catch (emailError) {
-         console.error("Error sending login notification email:", emailError);
-       
-       }
+        try {
+          await sendLoginEmail(user.email, loginTime);
+        } catch (emailError) {
+          console.error("Error sending login notification email:", emailError);
+        }
 
         res.cookie("token", token).json(user);
       }
@@ -3869,7 +5985,7 @@ const loginAdmin = async (req, res) => {
 
         const loginTime = new Date().toLocaleString();
         try {
-          // await sendLoginEmail(user.email, loginTime);
+          await sendLoginEmail(user.email, loginTime);
         } catch (emailError) {
           console.error("Error sending login notification email:", emailError);
         }
@@ -3890,7 +6006,6 @@ const logoutUser = (req, res) => {
 };
 
 const createService = async (req, res) => {
-
   try {
     const { token } = req.cookies;
     if (!token) {
@@ -3940,7 +6055,9 @@ const createService = async (req, res) => {
 
     if (!req.files || req.files.length < 4 || req.files.length > 15) {
       validationErrors.push(
-        `Please upload between 4 and 15 images. You uploaded ${req.files ? req.files.length : 0}.`
+        `Please upload between 4 and 15 images. You uploaded ${
+          req.files ? req.files.length : 0
+        }.`
       );
     }
 
@@ -3967,9 +6084,7 @@ const createService = async (req, res) => {
     res
       .status(201)
       .json({ message: "Service created successfully", service: newService });
-  
-    } catch (error) {
-
+  } catch (error) {
     console.error("Error creating service:", error);
     if (error.name === "ValidationError") {
       const validationErrors = Object.values(error.errors).map(
@@ -3980,11 +6095,8 @@ const createService = async (req, res) => {
         .json({ error: "Validation failed", details: validationErrors });
     }
     res.status(500).json({ error: "Internal server error" });
-
   }
-
 };
-
 
 const getFullProfile = async (req, res) => {
   const { token } = req.cookies; // Make sure token is set in cookies
@@ -4011,9 +6123,11 @@ const getFullProfile = async (req, res) => {
         account_type: user.account_type,
         first_name: user.first_name,
         last_name: user.last_name,
+        address: user.address,
         contact_email: user.contact_email,
         phone_number: user.phone_number,
         date_joined: user.date_joined,
+        dob: user.dob,
         status: user.status,
         role: user.role,
         interface: decoded.interface,
@@ -4041,12 +6155,19 @@ const updatePartnerDetails = async (req, res) => {
         }
 
         // Update partner details
-        const { first_name, last_name, phone_number, contact_email, address } =
-          req.body;
+        const {
+          first_name,
+          last_name,
+          phone_number,
+          contact_email,
+          dob,
+          address,
+        } = req.body;
         user.first_name = first_name || user.first_name;
         user.last_name = last_name || user.last_name;
         user.phone_number = phone_number || user.phone_number;
         user.contact_email = contact_email || user.contact_email;
+        user.dob = dob || user.dob;
         user.address = address || user.address;
 
         await user.save();
@@ -4058,6 +6179,7 @@ const updatePartnerDetails = async (req, res) => {
           last_name: user.last_name,
           phone_number: user.phone_number,
           contact_email: user.contact_email,
+          dob: user.dob,
           address: user.address,
           interface: "partner",
         });
@@ -4085,20 +6207,21 @@ const updateUserDetails = async (req, res) => {
         }
 
         // Update user details
-        const { first_name, last_name, phone_number } = req.body;
+        const { first_name, last_name, phone_number, dob } = req.body;
         user.first_name = first_name || user.first_name;
         user.last_name = last_name || user.last_name;
         user.phone_number = phone_number || user.phone_number;
+        user.dob = dob || user.dob;
 
         await user.save();
 
-        // Return updated user profile
         res.json({
           email: user.email,
           account_type: user.account_type,
           first_name: user.first_name,
           last_name: user.last_name,
           phone_number: user.phone_number,
+          dob: user.dob,
           interface: "user",
         });
       } catch (error) {
@@ -4208,55 +6331,136 @@ const getPaymentMethod = async (req, res) => {
   }
 };
 
+// const createPartner = async (req, res) => {
+//   try {
+//     // Extract user details from request body
+//     const { email, firstName, lastName, phoneNumber, password } = req.body;
+
+//     // Check if all required fields are provided
+//     if (!email || !firstName || !lastName || !phoneNumber || !password) {
+//       return res.status(400).json({ error: "All fields are required" });
+//     }
+
+//     // Check if user already exists
+//     const existingUser = await User.findOne({ email });
+//     if (existingUser) {
+//       return res.status(400).json({ error: "User already exists" });
+//     }
+
+//     // Generate 6-digit verification code
+//     const verificationCode = crypto.randomInt(100000, 999999).toString();
+
+//     // Hash the password before saving
+//     const hashedPassword = await hashPassword(password);
+
+//     // Create a new user with the provided details
+//     const newUser = new User({
+//       email,
+//       first_name: firstName,
+//       last_name: lastName,
+//       phone_number: phoneNumber,
+//       password: hashedPassword,
+//       account_type: "partner",
+//       role: "partner",
+//       is_verified: false,
+//       code: verificationCode,
+//     });
+
+//     // Save the new user to the database
+//     await newUser.save();
+
+//     // Send verification email
+//     await sendVerificationEmail(email, verificationCode);
+
+//     // Respond with success message
+//     res.status(201).json({ message: "Check your email for verification code" });
+//   } catch (error) {
+//     console.error("Error creating partner account:", error);
+//     res.status(500).json({ error: "Internal server error" });
+//   }
+// };
+
 const createPartner = async (req, res) => {
   try {
-    // Extract user details from request body
-    const { email, firstName, lastName, phoneNumber, password } = req.body;
+    const { email, firstName, lastName, phoneNumber, DOB, password, address } =
+      req.body;
 
-    // Check if all required fields are provided
-    if (!email || !firstName || !lastName || !phoneNumber || !password) {
-      return res.status(400).json({ error: "All fields are required" });
+    // Data validation checks
+    if (
+      !email ||
+      !firstName ||
+      !lastName ||
+      !phoneNumber ||
+      !DOB ||
+      !password
+    ) {
+      return res.status(400).json({
+        error: "All fields are required",
+      });
     }
 
-    // Check if user already exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ error: "User already exists" });
+    // Password complexity checks
+    if (password.length < 6) {
+      return res.status(400).json({
+        error: "Password must be at least 6 characters long",
+      });
     }
 
-    // Generate 6-digit verification code
+    const exist = await User.findOne({ email });
+    if (exist) {
+      return res.status(400).json({
+        error: "Account exists. Sign in as a partner or customer",
+      });
+    }
+
+    const hashedPassword = await hashPassword(password);
     const verificationCode = crypto.randomInt(100000, 999999).toString();
 
-    // Hash the password before saving
-    const hashedPassword = await hashPassword(password);
-
-    // Create a new user with the provided details
-    const newUser = new User({
+    const user = await User.create({
       email,
+      password: hashedPassword,
+      account_type: "partner",
       first_name: firstName,
       last_name: lastName,
       phone_number: phoneNumber,
-      password: hashedPassword,
-      account_type: "partner",
+      dob: DOB,
+      address: address,
       role: "partner",
       is_verified: false,
       code: verificationCode,
     });
 
-    // Save the new user to the database
-    await newUser.save();
+    // Save the uploaded document to the MediaTag schema
+    if (req.file) {
+      const mediaTag = new MediaTag({
+        listing_id: user._id,
+        media_name: req.file.filename,
+        media_location: req.file.path,
+        size: req.file.size,
+      });
+      await mediaTag.save();
+    }
 
-    // Send verification email
     await sendVerificationEmail(email, verificationCode);
 
-    // Respond with success message
-    res.status(201).json({ message: "Check your email for verification code" });
+    return res.status(201).json({
+      message: "Check your email for verification code",
+      user: {
+        id: user._id,
+        email: user.email,
+        firstName: user.first_name,
+        lastName: user.last_name,
+        phoneNumber: user.phone_number,
+        DOB: user.dob,
+      },
+    });
   } catch (error) {
-    console.error("Error creating partner account:", error);
-    res.status(500).json({ error: "Internal server error" });
+    console.error("Error during registration:", error);
+    return res.status(500).json({
+      error: "Server error, please try again later",
+    });
   }
 };
-
 module.exports = {
   test,
   registerUser,
@@ -4340,5 +6544,18 @@ module.exports = {
   uploadReceiptRental,
   uploadReceiptOffice,
   getStayListing,
-  updateListing
+  getServiceListing,
+  getRentalListing,
+  getOfficeListing,
+  updateListing,
+  updateRental,
+  updateOffice,
+  updateService,
+  approveListing,
+  verifyAccountPartner,
+  getReview,
+  MakePayout,
+  UpdateActionStatus,
+  PendingActions,
+  Review,
 };

@@ -5,8 +5,25 @@ import axios from 'axios';
 import { toast } from 'react-toastify';
 import { confirmAlert } from 'react-confirm-alert';
 import 'react-confirm-alert/src/react-confirm-alert.css'; // Import CSS
+import ReviewModal from "./ReviewModal";
 
 export default function CarRentals() {
+  
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [selectedBookingId, setSelectedBookingId] = useState(null);
+  const [selectedListingId, setSelectedListingId] = useState(null);
+
+  const openReviewModal = (bookingId, listingId) => {
+    setSelectedBookingId(bookingId);
+    setSelectedListingId(listingId);
+    setShowReviewModal(true);
+  };
+
+  const closeReviewModal = () => {
+    setShowReviewModal(false);
+    setSelectedBookingId(null);
+    setSelectedListingId(null);
+  };
   const { user, loading } = useContext(UserContext);
   const navigate = useNavigate();
   const [rentals, setRentals] = useState([]);
@@ -117,7 +134,7 @@ export default function CarRentals() {
   };
 
   const viewReceipt = (receipt) => {
-    window.open(`http://localhost:8000/${receipt.media_location}`, '_blank');
+    window.open(`https://smashapartments.com/uploads/${receipt.media_name}`, '_blank');
   };
 
   return (
@@ -192,6 +209,14 @@ export default function CarRentals() {
                     )}
                   </div>
                   <div className="action">
+                        <div
+                          className="new_btn_2"
+                          onClick={() => openReviewModal(rental._id, rental.rentalId)}
+                        >
+                          Review and rate
+                        </div>
+                      </div>
+                  <div className="action">
                     <div className="new_btn_2" onClick={() => uploadReceipt(rental._id)}>Upload receipt</div>
                     <input 
                       style={{ display: "none" }} 
@@ -213,7 +238,7 @@ export default function CarRentals() {
                           >
                             <div className="receipt-preview">
                               <img 
-                                src={`http://localhost:8000/${receipt.media_location}`} 
+                                src={`https://smashapartments.com/uploads/${receipt.media_name}`} 
                                 alt="Receipt preview"
                               />
                             </div>
@@ -228,7 +253,7 @@ export default function CarRentals() {
                 </div>
                 <div className="info_second">
                   <div>
-                    <img src={rental.media.length > 0 ? `http://localhost:8000/uploads/${rental.media[0].media_name}` : '/assets/properties (1).png'} alt="" />
+                    <img src={rental.media.length > 0 ? `https://smashapartments.com/uploads/${rental.media[0].media_name}` : '/assets/properties (1).png'} alt="" />
                   </div>
                 </div>
               </div>
@@ -250,6 +275,14 @@ export default function CarRentals() {
         ) : (
           <p>No current rentals found.</p>
         )}
+          {showReviewModal && (
+              <ReviewModal
+                userId={user._id}
+                bookingId={selectedBookingId}
+                listingId={selectedListingId}
+                onClose={closeReviewModal}
+              />
+            )}
         </div>
       </section>
     </>

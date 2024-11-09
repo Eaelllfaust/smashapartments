@@ -39,7 +39,7 @@ export default function ListProperty() {
                 </div>
             </div>
             <section className="form_area">
-                <div className="div">
+                <form className="div">
                     <h2>Create vendor account</h2>
                     <br />
                     <p>
@@ -50,7 +50,7 @@ export default function ListProperty() {
                     <label htmlFor="email">Email address</label>
                     <br />
                     <input
-                        type="text"
+                        type="email"
                         placeholder="Email address"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
@@ -66,7 +66,7 @@ export default function ListProperty() {
                         By signing in or creating an account, you agree with our&nbsp;Terms
                         &amp; Conditions&nbsp;and&nbsp;Privacy Statement
                     </p>
-                </div>
+                </form>
             </section>
             <br />
         </>
