@@ -1,7 +1,50 @@
 import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
+import { Eye, EyeOff } from "lucide-react";
 import axios from "axios";
+
+const styles = {
+  passwordInputWrapper: {
+    position: 'relative',
+    width: '100%'
+  },
+  toggleButton: {
+    position: 'absolute',
+    right: '10px',
+    top: '50%',
+    transform: 'translateY(-50%)',
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    padding: '5px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: '#666'
+  },
+  passwordInput: {
+    width: '100%',
+    paddingRight: '40px' // Make room for the toggle button
+  }
+};
+// Helper component for phone number validation
+const PhoneNumberHelper = ({ phoneNumber }) => {
+  const isValid = /^\d{10,}$/.test(phoneNumber);
+
+  return (
+    <div className={`password-helper phone-helper ${isValid ? "valid" : "invalid"}`}>
+      <ul>
+        <li className={/^\d+$/.test(phoneNumber) ? "valid" : "invalid"}>
+          Only digits allowed
+        </li>
+        <li className={phoneNumber.length >= 10 ? "valid" : "invalid"}>
+          At least 10 digits long
+        </li>
+      </ul>
+    </div>
+  );
+};
 
 const PasswordHelper = ({ password }) => {
   const [isValid, setIsValid] = useState(false);
@@ -54,6 +97,9 @@ export default function PartnerDetails() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [selectedFile, setSelectedFile] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleFileChange = (event) => {
     const file = event.target.files[0];
@@ -63,15 +109,21 @@ export default function PartnerDetails() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Data checks
+    if (loading) return;
+
+    // Verify if phone number contains only digits and has at least 10 characters
+    const phoneNumberIsValid = /^\d{10,}$/.test(phoneNumber);
+    if (!phoneNumberIsValid) {
+      toast.error("Phone number must contain only digits and be at least 10 digits long.");
+      return;
+    }
+
     if (!firstName || !lastName || !phoneNumber || !DOB || !selectedFile) {
       toast.error("Please fill in all the required fields.");
       return;
     }
 
-    // Password validation check
-    const passwordIsValid =
-      password.length >= 8 &&
+    const passwordIsValid = password.length >= 8 &&
       /[A-Z]/.test(password) &&
       /[0-9]/.test(password) &&
       /[!@#$%^&*(),.?":{}|<>]/.test(password);
@@ -81,46 +133,53 @@ export default function PartnerDetails() {
       return;
     }
 
+    if (password !== confirmPassword) {
+      toast.error("Passwords do not match.");
+      return;
+    }
+
+    setLoading(true);
+
     try {
-      if (password !== confirmPassword) {
-        toast.error("Passwords do not match.");
+      const formData = new FormData();
+      formData.append("email", email);
+      formData.append("firstName", firstName);
+      formData.append("lastName", lastName);
+      formData.append("phoneNumber", phoneNumber);
+      formData.append("address", address);
+      formData.append("DOB", DOB);
+      formData.append("password", password);
+      formData.append("gId", selectedFile);
+
+      const response = await axios.post("/createpartner", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      if (response.status === 400 && response.data.error) {
+        toast.error(response.data.error);
       } else {
-        const formData = new FormData();
-        formData.append("email", email);
-        formData.append("firstName", firstName);
-        formData.append("lastName", lastName);
-        formData.append("phoneNumber", phoneNumber);
-        formData.append("address", address);
-        formData.append("DOB", DOB);
-        formData.append("password", password);
-        formData.append("gId", selectedFile);
-
-        const response = await axios.post("/createpartner", formData, {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        });
-
-        if (response.data.error) {
-          toast.error(response.data.error);
-        } else {
-            setPassword("");
-            setConfirmPassword("");
-            toast.success("Check email for verification code");
-            navigate(`/authmevendor?email=${response.data.user.email}`);
-        }
+        setPassword("");
+        setConfirmPassword("");
+        toast.success("Check email for verification code");
+        navigate(`/authmevendor?email=${response.data.user.email}`);
       }
     } catch (error) {
-      console.error(error);
-      toast.error("An error occurred. Please try again.");
+      console.error("Frontend error:", error);
+      if (error.response && error.response.data && error.response.data.error) {
+        toast.error(error.response.data.error);
+      } else {
+        toast.error("An error occurred. Please try again.");
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div>
       <div className="shade_2 df">
-      <h1>List your property</h1>
-      <p>Over 12,000 properties live</p>
+        <h1>List your property</h1>
+        <p>Over 12,000 properties live</p>
         <img src="assets/linear_bg.png" className="shade_bg" alt="" />
         <div className="shade_item">
           <img src="assets/bg (2).png" alt="" />
@@ -167,14 +226,19 @@ export default function PartnerDetails() {
             value={DOB}
             onChange={(e) => setDOB(e.target.value)}
           />
+          
           <label htmlFor="phone">Phone number</label>
+          <br />
+          <br />
+        
           <input
-            type="text"
+            type="number"
             placeholder="Phone number"
             value={phoneNumber}
             onChange={(e) => setPhoneNumber(e.target.value)}
           />
-           <br />
+         
+          <br />
           <label htmlFor="address">Address</label>
           <input
             type="text"
@@ -182,7 +246,6 @@ export default function PartnerDetails() {
             value={address}
             onChange={(e) => setAddress(e.target.value)}
           />
-          
           <label htmlFor="ID">Government issued ID</label>
           <div
             onClick={() => document.getElementById("fileInput").click()}
@@ -207,38 +270,52 @@ export default function PartnerDetails() {
             style={{ display: "none" }}
             onChange={handleFileChange}
           />
-
-          {/* {selectedFile && <p>Selected file: {selectedFile.name}</p>} */}
           
           <PasswordHelper password={password} />
-          <br />
-          <label htmlFor="password">Password</label>
-          <div className="password-input-wrapper">
-            <input
-              type="password"
-              id="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Password"
-            />
-        
-          </div>
- 
-          <label htmlFor="confirm">Confirm password</label>
-          <input
-            type="password"
-            id="confirm"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            placeholder="Confirm password"
-          />
-          <button type="submit" className="button_5 stick">
-            Create account
+      <br />
+      <label htmlFor="password">Password</label>
+      <div style={styles.passwordInputWrapper}>
+        <input
+          type={showPassword ? "text" : "password"}
+          id="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="Password"
+          style={styles.passwordInput}
+        />
+        <button
+          type="button"
+          onClick={() => setShowPassword(!showPassword)}
+          style={styles.toggleButton}
+        >
+          {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+        </button>
+      </div>
+      
+      <label htmlFor="confirm">Confirm password</label>
+      <div style={styles.passwordInputWrapper}>
+        <input
+          type={showConfirmPassword ? "text" : "password"}
+          id="confirm"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+          placeholder="Confirm password"
+          style={styles.passwordInput}
+        />
+        <button
+          type="button"
+          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+          style={styles.toggleButton}
+        >
+          {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+        </button>
+      </div>
+          <button className="button_5 stick" type="submit" disabled={loading}>
+            {loading ? "Creating account..." : "Create account"}
           </button>
           <br />
-          <p className="legal_text">
-            By signing in or creating an account, you agree with our&nbsp;Terms
-            &amp; Conditions&nbsp;and&nbsp;Privacy Statement
+          <p className="sub">
+            Already have an account? <a href="signin">Sign in here</a>
           </p>
         </form>
       </section>

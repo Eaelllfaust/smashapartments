@@ -1,7 +1,50 @@
 import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
+import { Eye, EyeOff } from "lucide-react";
 import axios from "axios";
+
+const styles = {
+  passwordInputWrapper: {
+    position: 'relative',
+    width: '100%'
+  },
+  toggleButton: {
+    position: 'absolute',
+    right: '10px',
+    top: '50%',
+    transform: 'translateY(-50%)',
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    padding: '5px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: '#666'
+  },
+  passwordInput: {
+    width: '100%',
+    paddingRight: '40px'
+  }
+};
+
+const PhoneNumberHelper = ({ phoneNumber }) => {
+  const isValid = /^\d{10,}$/.test(phoneNumber);
+
+  return (
+    <div className={`password-helper phone-helper ${isValid ? "valid" : "invalid"}`}>
+      <ul>
+        <li className={/^\d+$/.test(phoneNumber) ? "valid" : "invalid"}>
+          Only digits allowed
+        </li>
+        <li className={phoneNumber.length >= 10 ? "valid" : "invalid"}>
+          At least 10 digits long
+        </li>
+      </ul>
+    </div>
+  );
+};
 
 const PasswordHelper = ({ password }) => {
   const [isValid, setIsValid] = useState(false);
@@ -53,6 +96,9 @@ export default function CreateDetails() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [selectedFile, setSelectedFile] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleFileChange = (event) => {
     const file = event.target.files[0];
@@ -61,6 +107,15 @@ export default function CreateDetails() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (loading) return;
+
+    // Verify if phone number contains only digits and has at least 10 characters
+    const phoneNumberIsValid = /^\d{10,}$/.test(phoneNumber);
+    if (!phoneNumberIsValid) {
+      toast.error("Phone number must contain only digits and be at least 10 digits long.");
+      return;
+    }
 
     // Data checks
     if (!firstName || !lastName || !phoneNumber || !DOB || !selectedFile) {
@@ -80,37 +135,46 @@ export default function CreateDetails() {
       return;
     }
 
+    if (password !== confirmPassword) {
+      toast.error("Passwords do not match.");
+      return;
+    }
+
+    setLoading(true);
+
     try {
-      if (password !== confirmPassword) {
-        toast.error("Passwords do not match.");
+      const formData = new FormData();
+      formData.append("email", email);
+      formData.append("firstName", firstName);
+      formData.append("lastName", lastName);
+      formData.append("phoneNumber", phoneNumber);
+      formData.append("DOB", DOB);
+      formData.append("password", password);
+      formData.append("gId", selectedFile);
+
+      const response = await axios.post("/register", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      if (response.data.error) {
+        toast.error(response.data.error);
       } else {
-        const formData = new FormData();
-        formData.append("email", email);
-        formData.append("firstName", firstName);
-        formData.append("lastName", lastName);
-        formData.append("phoneNumber", phoneNumber);
-        formData.append("DOB", DOB);
-        formData.append("password", password);
-        formData.append("gId", selectedFile);
-
-        const response = await axios.post("/register", formData, {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        });
-
-        if (response.data.error) {
-          toast.error(response.data.error);
-        } else {
-            setPassword("");
-            setConfirmPassword("");
-            toast.success("Check email for verification code");
-            navigate(`/authme?email=${response.data.user.email}`);
-        }
+        setPassword("");
+        setConfirmPassword("");
+        toast.success("Check email for verification code");
+        navigate(`/authme?email=${response.data.user.email}`);
       }
     } catch (error) {
       console.error(error);
-      toast.error("An error occurred. Please try again.");
+      if (error.response && error.response.data && error.response.data.error) {
+        toast.error(error.response.data.error);
+      } else {
+        toast.error("An error occurred. Please try again.");
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -166,11 +230,12 @@ export default function CreateDetails() {
           />
           <label htmlFor="phone">Phone number</label>
           <input
-            type="text"
+            type="number"
             placeholder="Phone number"
             value={phoneNumber}
             onChange={(e) => setPhoneNumber(e.target.value)}
           />
+          {/* <PhoneNumberHelper phoneNumber={phoneNumber} /> */}
           <label htmlFor="ID">Government issued ID</label>
           <div
             onClick={() => document.getElementById("fileInput").click()}
@@ -195,33 +260,48 @@ export default function CreateDetails() {
             style={{ display: "none" }}
             onChange={handleFileChange}
           />
-
-          {/* {selectedFile && <p>Selected file: {selectedFile.name}</p>} */}
           
           <PasswordHelper password={password} />
           <br />
           <label htmlFor="password">Password</label>
-          <div className="password-input-wrapper">
+          <div style={styles.passwordInputWrapper}>
             <input
-              type="password"
+              type={showPassword ? "text" : "password"}
               id="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Password"
+              style={styles.passwordInput}
             />
-        
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              style={styles.toggleButton}
+            >
+              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+            </button>
           </div>
  
           <label htmlFor="confirm">Confirm password</label>
-          <input
-            type="password"
-            id="confirm"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            placeholder="Confirm password"
-          />
-          <button type="submit" className="button_5 stick">
-            Create account
+          <div style={styles.passwordInputWrapper}>
+            <input
+              type={showConfirmPassword ? "text" : "password"}
+              id="confirm"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Confirm password"
+              style={styles.passwordInput}
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              style={styles.toggleButton}
+            >
+              {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+            </button>
+          </div>
+          <button type="submit" className="button_5 stick" disabled={loading}>
+            {loading ? "Creating account..." : "Create account"}
           </button>
           <br />
           <p className="legal_text">
